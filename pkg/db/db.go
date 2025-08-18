@@ -1,6 +1,7 @@
 package db
 
 import (
+	"feedback-system/internal/models"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
