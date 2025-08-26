@@ -480,11 +480,11 @@ async function saveMessageToDatabase(message) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                feedbackId: message.data.feedbackId,
+                feedback_id: message.data.feedbackId,
                 content: message.data.content,
-                messageType: message.data.messageType,
-                senderId: message.sender.id,
-                senderType: message.sender.userType
+                message_type: message.data.messageType,
+                sender_id: message.sender.id,
+                sender_type: message.sender.userType
             })
         });
         
