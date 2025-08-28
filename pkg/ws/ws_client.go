@@ -1,14 +1,15 @@
 package ws
 
 import (
-	"github.com/gorilla/websocket"
 	"sync"
+
+	"github.com/gorilla/websocket"
 )
 
 // WSClient WebSocket客户端连接
 type WSClient struct {
 	Conn      *websocket.Conn // WebSocket连接
-	UserID    uint64          // 用户ID
+	UserID    uint64          // 用户ID（数字形式）
 	UserType  uint8           // 用户类型：1-用户 2-商家 3-管理员
 	UserName  string          // 用户名称
 	Send      chan []byte     // 发送消息的通道

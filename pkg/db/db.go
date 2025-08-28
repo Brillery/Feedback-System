@@ -2,6 +2,7 @@ package db
 
 import (
 	"feedback-system/internal/models"
+
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -13,6 +14,7 @@ func NewDB(dsn string) (*gorm.DB, error) {
 	}
 
 	err = db.AutoMigrate(
+		&models.User{},
 		&models.Feedback{},
 		&models.FeedbackMessage{},
 	)

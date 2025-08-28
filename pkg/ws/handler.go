@@ -1,11 +1,12 @@
 package ws
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
 
 var upgrader = websocket.Upgrader{
@@ -35,8 +36,15 @@ func NewWSHandler() *WSHandler {
 // HandleConnection 处理WebSocket连接请求
 func (h *WSHandler) HandleConnection(c *gin.Context) {
 	// 获取用户信息
-	userID, err := strconv.ParseUint(c.Query("user_id"), 10, 64)
-	if err != nil || userID == 0 {
+	userIDStr := c.Query("user_id")
+	if userIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing user ID"})
+		return
+	}
+
+	// 将字符串ID转换为uint64
+	userID, err := strconv.ParseUint(userIDStr, 10, 64)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
@@ -71,9 +79,14 @@ func (h *WSHandler) HandleConnection(c *gin.Context) {
 	go client.ReadPump(h.hub)
 }
 
-// SendMessageToUser 发送消息给特定用户
+// SendMessageToUser 发送消息给特定用户（通过数字ID）
 func (h *WSHandler) SendMessageToUser(userID uint64, userType uint8, message []byte) bool {
 	return h.hub.SendToUser(userID, userType, message)
+}
+
+// SendMessageToUserByStr 发送消息给特定用户（通过字符串ID）
+func (h *WSHandler) SendMessageToUserByStr(userIDStr string, userType uint8, message []byte) bool {
+	return h.hub.SendToUserByStr(userIDStr, userType, message)
 }
 
 // BroadcastMessage 广播消息给所有用户

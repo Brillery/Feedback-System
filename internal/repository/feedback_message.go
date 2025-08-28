@@ -2,6 +2,7 @@ package repository
 
 import (
 	"feedback-system/internal/models"
+
 	"gorm.io/gorm"
 )
 
@@ -10,6 +11,7 @@ type FeedbackMessageRepository interface {
 	FindAllByFeedbackID(fId uint64) ([]*models.FeedbackMessage, error)
 	MarkAsRead(id uint64)
 	Delete(id uint64) error
+	DeleteByFeedbackID(feedbackId uint64) error
 }
 
 type feedbackMessageRepository struct {
@@ -41,4 +43,8 @@ func (r *feedbackMessageRepository) MarkAsRead(id uint64) {
 
 func (r *feedbackMessageRepository) Delete(id uint64) error {
 	return r.db.Delete(&models.FeedbackMessage{}, id).Error
+}
+
+func (r *feedbackMessageRepository) DeleteByFeedbackID(feedbackId uint64) error {
+	return r.db.Where("feedback_id = ?", feedbackId).Delete(&models.FeedbackMessage{}).Error
 }

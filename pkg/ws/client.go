@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"feedback-system/internal/consts"
 	"feedback-system/internal/models"
-	"github.com/gorilla/websocket"
 	"log"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 const (
@@ -102,6 +103,15 @@ func (c *WSClient) ReadPump(hub *Hub) {
 			// 处理状态变更事件
 			handleStatusChangeEvent(hub, &wsMessage, updatedMessage)
 
+		case consts.EventFeedbackDelete:
+			// 处理反馈删除事件
+			log.Printf("WebSocket处理反馈删除事件: %s", string(updatedMessage))
+			handleFeedbackDeleteEvent(hub, &wsMessage, updatedMessage)
+
+		case "new_feedback":
+			// 处理新反馈事件
+			handleNewFeedbackEvent(hub, &wsMessage, updatedMessage)
+
 		default:
 			// 未知事件类型
 			log.Printf("Unknown event type: %s", wsMessage.Event)
@@ -163,6 +173,7 @@ func (c *WSClient) WritePump() {
 func handleMessageEvent(hub *Hub, wsMessage *models.WSMessage, message []byte) {
 	// 如果有接收者，发送给特定接收者
 	if wsMessage.Receiver != nil {
+		// 确保正确处理uint64类型的ID
 		hub.SendToUser(wsMessage.Receiver.ID, wsMessage.Receiver.Type, message)
 	} else {
 		// 否则广播消息
@@ -174,6 +185,7 @@ func handleMessageEvent(hub *Hub, wsMessage *models.WSMessage, message []byte) {
 func handleTypingEvent(hub *Hub, wsMessage *models.WSMessage, message []byte) {
 	// 如果有接收者，发送给特定接收者
 	if wsMessage.Receiver != nil {
+		// 确保正确处理uint64类型的ID
 		hub.SendToUser(wsMessage.Receiver.ID, wsMessage.Receiver.Type, message)
 	}
 }
@@ -182,6 +194,7 @@ func handleTypingEvent(hub *Hub, wsMessage *models.WSMessage, message []byte) {
 func handleReadEvent(hub *Hub, wsMessage *models.WSMessage, message []byte) {
 	// 如果有接收者，发送给特定接收者
 	if wsMessage.Receiver != nil {
+		// 确保正确处理uint64类型的ID
 		hub.SendToUser(wsMessage.Receiver.ID, wsMessage.Receiver.Type, message)
 	}
 }
@@ -190,4 +203,22 @@ func handleReadEvent(hub *Hub, wsMessage *models.WSMessage, message []byte) {
 func handleStatusChangeEvent(hub *Hub, wsMessage *models.WSMessage, message []byte) {
 	// 广播状态变更消息
 	hub.broadcast <- message
+}
+
+// 处理反馈删除事件
+func handleFeedbackDeleteEvent(hub *Hub, wsMessage *models.WSMessage, message []byte) {
+	log.Printf("广播反馈删除消息: %s", string(message))
+	// 广播反馈删除消息
+	hub.broadcast <- message
+}
+
+// 处理新反馈事件
+func handleNewFeedbackEvent(hub *Hub, wsMessage *models.WSMessage, message []byte) {
+	// 如果有接收者，发送给特定接收者
+	if wsMessage.Receiver != nil {
+		hub.SendToUser(wsMessage.Receiver.ID, wsMessage.Receiver.Type, message)
+	} else {
+		// 否则广播消息
+		hub.broadcast <- message
+	}
 }

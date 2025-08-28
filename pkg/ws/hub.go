@@ -67,7 +67,7 @@ func (h *Hub) registerClient(client *WSClient) {
 	h.clients[client] = true
 
 	// 按用户ID和类型索引
-	userKey := getUserKey(client.UserID, client.UserType)
+	userKey := getUserKeyByID(client.UserID, client.UserType)
 
 	// 如果该用户已有连接，关闭旧连接
 	if oldClient, exists := h.userClients[userKey]; exists {
@@ -94,7 +94,7 @@ func (h *Hub) unregisterClient(client *WSClient) {
 		delete(h.clients, client)
 
 		// 从用户索引中移除
-		userKey := getUserKey(client.UserID, client.UserType)
+		userKey := getUserKeyByID(client.UserID, client.UserType)
 		if c, exists := h.userClients[userKey]; exists && c == client {
 			delete(h.userClients, userKey)
 		}
@@ -121,7 +121,7 @@ func (h *Hub) broadcastMessage(message []byte) {
 			delete(h.clients, client)
 
 			// 从用户索引中移除
-			userKey := getUserKey(client.UserID, client.UserType)
+			userKey := getUserKeyByID(client.UserID, client.UserType)
 			if c, exists := h.userClients[userKey]; exists && c == client {
 				delete(h.userClients, userKey)
 			}
@@ -129,12 +129,12 @@ func (h *Hub) broadcastMessage(message []byte) {
 	}
 }
 
-// 发送消息给特定用户
-func (h *Hub) SendToUser(userID uint64, userType uint8, message []byte) bool {
+// 发送消息给特定用户（通过字符串ID）
+func (h *Hub) SendToUserByStr(userIDStr string, userType uint8, message []byte) bool {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 
-	userKey := getUserKey(userID, userType)
+	userKey := getUserKey(userIDStr, userType)
 	if client, exists := h.userClients[userKey]; exists {
 		select {
 		case client.Send <- message:
@@ -174,7 +174,33 @@ func (h *Hub) sendConnectEvent(client *WSClient) {
 	client.Send <- jsonMessage
 }
 
-// 获取用户唯一键
-func getUserKey(userID uint64, userType uint8) string {
+// 获取用户唯一键（通过字符串ID）
+func getUserKey(userID string, userType uint8) string {
+	return fmt.Sprintf("%s:%d", userID, userType)
+}
+
+// 获取用户唯一键（通过数字ID）
+func getUserKeyByID(userID uint64, userType uint8) string {
 	return fmt.Sprintf("%d:%d", userID, userType)
+}
+
+// 发送消息给特定用户（通过数字ID）
+func (h *Hub) SendToUser(userID uint64, userType uint8, message []byte) bool {
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
+
+	userKey := getUserKeyByID(userID, userType)
+	if client, exists := h.userClients[userKey]; exists {
+		select {
+		case client.Send <- message:
+			return true
+		default:
+			// 发送失败，关闭连接
+			client.Close()
+			delete(h.clients, client)
+			delete(h.userClients, userKey)
+			return false
+		}
+	}
+	return false
 }

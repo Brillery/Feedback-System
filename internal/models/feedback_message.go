@@ -11,4 +11,7 @@ type FeedbackMessage struct {
 	Content     string    `gorm:"type:text;not null;comment:消息内容（文本内容或JSON格式的图片URL数组）" json:"content"`
 	IsRead      uint8     `gorm:"not null;default:0;comment:是否已读：0-未读 1-已读" json:"is_read"`
 	CreatedAt   time.Time `gorm:"autoCreateTime" json:"created_at"`
+
+	// 非数据库字段，用于API返回
+	SenderName string `gorm:"-" json:"sender_name"`
 }

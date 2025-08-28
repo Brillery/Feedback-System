@@ -31,14 +31,22 @@ func (h *FeedbackHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// 从请求头或会话中获取用户信息
-	// 在实际应用中，这里应该从认证中间件中获取用户信息
-	userID, _ := strconv.ParseUint(c.GetHeader("X-User-ID"), 10, 64)
-	userType, _ := strconv.ParseUint(c.GetHeader("X-User-Type"), 10, 8)
+	// 从认证中间件中获取用户信息
+	user, exists := c.Get("user")
+	if !exists {
+		Unauthorized(c, "未认证")
+		return
+	}
+
+	userObj, ok := user.(*models.User)
+	if !ok {
+		ServerError(c, "用户类型断言失败")
+		return
+	}
 
 	// 设置创建者信息
-	feedback.CreatorID = userID
-	feedback.CreatorType = uint8(userType)
+	feedback.CreatorID = userObj.ID
+	feedback.CreatorType = userObj.UserType
 
 	// 创建反馈
 	err := h.feedbackService.Create(&feedback)
@@ -149,12 +157,21 @@ func (h *FeedbackHandler) UpdateStatus(c *gin.Context) {
 		return
 	}
 
-	// 从请求头或会话中获取用户信息
-	userID, _ := strconv.ParseUint(c.GetHeader("X-User-ID"), 10, 64)
-	userType, _ := strconv.ParseUint(c.GetHeader("X-User-Type"), 10, 8)
+	// 从认证中间件中获取用户信息
+	user, exists := c.Get("user")
+	if !exists {
+		Unauthorized(c, "未认证")
+		return
+	}
+
+	userObj, ok := user.(*models.User)
+	if !ok {
+		ServerError(c, "用户类型断言失败")
+		return
+	}
 
 	// 更新状态
-	err = h.feedbackService.UpdateStatus(id, req.Status, userID, uint8(userType))
+	err = h.feedbackService.UpdateStatus(id, req.Status, userObj.ID, userObj.UserType)
 	if err != nil {
 		ServerError(c, "Failed to update status: "+err.Error())
 		return
@@ -172,8 +189,21 @@ func (h *FeedbackHandler) Delete(c *gin.Context) {
 		return
 	}
 
+	// 从认证中间件中获取用户信息
+	user, exists := c.Get("user")
+	if !exists {
+		Unauthorized(c, "未认证")
+		return
+	}
+
+	userObj, ok := user.(*models.User)
+	if !ok {
+		ServerError(c, "用户类型断言失败")
+		return
+	}
+
 	// 删除反馈
-	err = h.feedbackService.Delete(id)
+	err = h.feedbackService.Delete(id, userObj.ID, userObj.UserType)
 	if err != nil {
 		ServerError(c, "Failed to delete feedback: "+err.Error())
 		return

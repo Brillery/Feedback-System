@@ -102,9 +102,7 @@ body {
     background-color: #17a2b8;
 }
 
-.status-closed {
-    background-color: #6c757d;
-}
+
 
 /* 未读消息指示器 */
 .unread-indicator {
@@ -140,7 +138,7 @@ body {
     .chat-container {
         height: 300px;
     }
-    
+
     .message {
         max-width: 90%;
     }

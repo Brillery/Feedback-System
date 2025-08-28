@@ -16,7 +16,7 @@ const jwtSecret = "feedback-system-secret-key"
 type UserService interface {
 	Register(req *models.UserRegisterRequest) (*models.User, error)
 	Login(req *models.UserLoginRequest) (*models.UserLoginResponse, error)
-	GetUserByID(id string) (*models.User, error)
+	GetUserByID(id uint64) (*models.User, error)
 	ValidateToken(token string) (*models.User, error)
 }
 
@@ -85,7 +85,7 @@ func (s *userService) Login(req *models.UserLoginRequest) (*models.UserLoginResp
 }
 
 // GetUserByID 根据ID获取用户
-func (s *userService) GetUserByID(id string) (*models.User, error) {
+func (s *userService) GetUserByID(id uint64) (*models.User, error) {
 	return s.userRepo.GetByID(id)
 }
 
@@ -107,10 +107,11 @@ func (s *userService) ValidateToken(tokenString string) (*models.User, error) {
 	// 验证令牌有效性
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		// 获取用户ID
-		userID, ok := claims["id"].(string)
+		userIDFloat, ok := claims["id"].(float64)
 		if !ok {
 			return nil, errors.New("invalid token claims")
 		}
+		userID := uint64(userIDFloat)
 
 		// 获取用户信息
 		user, err := s.userRepo.GetByID(userID)

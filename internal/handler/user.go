@@ -40,7 +40,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 	}
 
 	// 验证用户类型
-	if req.UserType != "user" && req.UserType != "merchant" && req.UserType != "admin" {
+	if req.UserType != 1 && req.UserType != 2 && req.UserType != 3 {
 		BadRequest(c, "无效的用户类型")
 		return
 	}
@@ -67,7 +67,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 	}
 
 	// 验证用户类型
-	if req.UserType != "user" && req.UserType != "merchant" && req.UserType != "admin" {
+	if req.UserType != 1 && req.UserType != 2 && req.UserType != 3 {
 		BadRequest(c, "无效的用户类型")
 		return
 	}

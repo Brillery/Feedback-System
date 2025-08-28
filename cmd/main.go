@@ -9,6 +9,7 @@ import (
 	"feedback-system/pkg/ws"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 )
@@ -24,14 +25,14 @@ func main() {
 	// 初始化 repositories
 	feedbackRepo := repository.NewFeedbackRepository(db)
 	messageRepo := repository.NewFeedbackMessageRepository(db)
-	userRepo := repository.NewUserRepository()
+	userRepo := repository.NewUserRepository(db)
 
 	// 初始化 WebSocket 处理程序
 	wsHandler := ws.NewWSHandler()
 
 	// 初始化 service
-	feedbackService := service.NewFeedbackService(feedbackRepo, wsHandler)
-	messageService := service.NewFeedbackMessageService(messageRepo, wsHandler)
+	feedbackService := service.NewFeedbackService(feedbackRepo, messageRepo, userRepo, wsHandler)
+	messageService := service.NewFeedbackMessageService(messageRepo, feedbackRepo, userRepo, wsHandler)
 	userService := service.NewUserService(userRepo)
 
 	// 初始化 handler
@@ -39,9 +40,13 @@ func main() {
 	messageHandler := handler.NewFeedbackMessageHandler(messageService)
 	wsHttpHandler := handler.NewWSHandler(wsHandler)
 	userHandler := handler.NewUserHandler(userService)
+	uploadHandler := handler.NewUploadHandler()
 
 	// 设置路由
 	router := gin.Default()
+
+	// 设置受信任的代理
+	router.SetTrustedProxies([]string{"127.0.0.1", "::1"})
 
 	// 设置跨域中间件
 	router.Use(func(c *gin.Context) {
@@ -93,14 +98,21 @@ func main() {
 			// 所有认证用户都可以访问的路由
 			feedbackHandler.RegisterRoutes(authApi)
 			messageHandler.RegisterRoutes(authApi)
+
+			// 上传路由
+			authApi.POST("/upload/image", uploadHandler.UploadImage)
 		}
 	}
 
 	// 静态文件服务
 	router.Static("/static", "./static")
+
+	// 确保上传目录存在
+	os.MkdirAll("./static/uploads", 0755)
 	router.StaticFile("/", "./static/index.html")
 	router.StaticFile("/merchant", "./static/merchant.html")
 	router.StaticFile("/admin", "./static/admin.html")
+	router.StaticFile("/test.html", "./static/test.html")
 
 	// 启动服务器
 	port := "8080"

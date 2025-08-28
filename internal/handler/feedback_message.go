@@ -31,13 +31,22 @@ func (h *FeedbackMessageHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// 从请求头或会话中获取用户信息
-	userID, _ := strconv.ParseUint(c.GetHeader("X-User-ID"), 10, 64)
-	userType, _ := strconv.ParseUint(c.GetHeader("X-User-Type"), 10, 8)
+	// 从认证中间件中获取用户信息
+	user, exists := c.Get("user")
+	if !exists {
+		Unauthorized(c, "未认证")
+		return
+	}
+
+	userObj, ok := user.(*models.User)
+	if !ok {
+		ServerError(c, "用户类型断言失败")
+		return
+	}
 
 	// 设置发送者信息
-	message.SenderID = userID
-	message.SenderType = uint8(userType)
+	message.SenderID = userObj.ID
+	message.SenderType = userObj.UserType
 
 	// 创建消息
 	err := h.messageService.Create(&message)
@@ -112,3 +121,17 @@ func (h *FeedbackMessageHandler) RegisterRoutes(router *gin.RouterGroup) {
 		messageRouter.DELETE("/:id", h.Delete)                         // 删除消息
 	}
 }
+
+// getUserTypeNumber 将用户类型字符串转换为数字
+//func getUserTypeNumber(userType string) uint8 {
+//	switch userType {
+//	case "user":
+//		return 1
+//	case "merchant":
+//		return 2
+//	case "admin":
+//		return 3
+//	default:
+//		return 1
+//	}
+//}
