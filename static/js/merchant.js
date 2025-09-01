@@ -49,6 +49,7 @@ class MerchantApp {
             // 反馈列表相关
             feedbackList: document.getElementById('feedbackList'),
             filterItems: document.querySelectorAll('.filter-item'),
+            newSystemFeedbackBtn: document.getElementById('newSystemFeedbackBtn'),
 
             // 反馈详情相关
             currentFeedbackTitle: document.getElementById('currentFeedbackTitle'),
@@ -68,11 +69,19 @@ class MerchantApp {
             typingIndicator: document.getElementById('typingIndicator'),
 
             // 模态框相关
-            loginModal: new bootstrap.Modal(document.getElementById('loginModal')),
+            loginModal: null, // 延迟初始化
             loginForm: document.getElementById('loginForm'),
             loginUsername: document.getElementById('loginUsername'),
             loginPassword: document.getElementById('loginPassword'),
-            loginSubmitBtn: document.getElementById('loginSubmitBtn')
+            loginSubmitBtn: document.getElementById('loginSubmitBtn'),
+
+            // 系统反馈相关
+            systemFeedbackModal: null, // 延迟初始化
+            systemFeedbackForm: document.getElementById('systemFeedbackForm'),
+            systemFeedbackTitle: document.getElementById('systemFeedbackTitle'),
+            systemFeedbackContent: document.getElementById('systemFeedbackContent'),
+            systemFeedbackContact: document.getElementById('systemFeedbackContact'),
+            submitSystemFeedbackBtn: document.getElementById('submitSystemFeedbackBtn')
         };
     }
 
@@ -80,8 +89,26 @@ class MerchantApp {
      * 初始化应用
      */
     init() {
+        // 清理localStorage中的旧数据（只在第一次加载时执行）
+        if (!sessionStorage.getItem('localStorage_cleaned')) {
+            StorageUtils.clearAllLocalStorageData();
+            sessionStorage.setItem('localStorage_cleaned', 'true');
+        }
+
+        // 初始化模态框
+        this.initializeModals();
+
         this.bindEvents();
         this.checkLoginStatus();
+    }
+
+    /**
+     * 初始化模态框
+     */
+    initializeModals() {
+        // 延迟初始化模态框，确保DOM已加载
+        this.elements.loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+        this.elements.systemFeedbackModal = new bootstrap.Modal(document.getElementById('systemFeedbackModal'));
     }
 
     /**
@@ -99,6 +126,24 @@ class MerchantApp {
 
         this.elements.logoutBtn.addEventListener('click', () => {
             this.handleLogout();
+        });
+
+        // 系统反馈相关事件
+        this.elements.newSystemFeedbackBtn.addEventListener('click', () => {
+            if (!this.state.currentUser) {
+                this.showAlert('请先登录', 'warning');
+                this.elements.loginModal.show();
+                return;
+            }
+            // 自动填充用户的联系方式
+            if (this.state.currentUser.contact) {
+                this.elements.systemFeedbackContact.value = this.state.currentUser.contact;
+            }
+            this.elements.systemFeedbackModal.show();
+        });
+
+        this.elements.submitSystemFeedbackBtn.addEventListener('click', () => {
+            this.handleSubmitSystemFeedback();
         });
 
         // 消息相关事件
@@ -146,14 +191,17 @@ class MerchantApp {
      * 检查登录状态
      */
     async checkLoginStatus() {
-        const savedUser = localStorage.getItem(CONFIG.STORAGE_KEYS.MERCHANT_DATA);
-        const token = localStorage.getItem(CONFIG.STORAGE_KEYS.MERCHANT_TOKEN);
+        const savedUser = StorageUtils.getUserData();
+        const token = StorageUtils.getToken();
 
         if (savedUser && token) {
             try {
                 this.state.currentUser = JSON.parse(savedUser);
 
                 // 验证令牌有效性
+                // 前后端对接：GET /api/user/me → internal/handler/user.go GetCurrentUser()方法
+                // 需要Authorization头：Bearer {token}
+                // 响应数据：{code, message, data: user对象}
                 const response = await HttpUtils.get(CONFIG.ENDPOINTS.USER.CURRENT);
 
                 if (response.code === CONFIG.ERROR_CODES.SUCCESS) {
@@ -202,14 +250,18 @@ class MerchantApp {
             };
 
             // 发送登录请求
+            // 前后端对接：POST /api/user/login → internal/handler/user.go Login()方法
+            // 请求数据：{username, password, user_type: 2} (2=商家)
+            // 响应数据：{code, message, data: {user, token}}
             const response = await HttpUtils.post(CONFIG.ENDPOINTS.USER.LOGIN, loginData);
 
             // 保存用户信息和令牌（使用商家专用存储键）
             this.state.currentUser = {
                 ...response.data.user
             };
-            localStorage.setItem(CONFIG.STORAGE_KEYS.MERCHANT_TOKEN, response.data.token);
-            localStorage.setItem(CONFIG.STORAGE_KEYS.MERCHANT_DATA, JSON.stringify(response.data.user));
+            StorageUtils.setToken(response.data.token);
+            StorageUtils.setUserData(response.data.user);
+            StorageUtils.setUserType(CONFIG.USER_TYPE.MERCHANT);
 
             // 更新UI
             this.updateUIAfterLogin();
@@ -248,9 +300,8 @@ class MerchantApp {
         this.state.currentFeedbackId = null;
         this.state.feedbacks = [];
 
-        // 清除本地存储（商家专用）
-        localStorage.removeItem(CONFIG.STORAGE_KEYS.MERCHANT_TOKEN);
-        localStorage.removeItem(CONFIG.STORAGE_KEYS.MERCHANT_DATA);
+        // 清除本地存储
+        StorageUtils.clearUserData();
 
         // 更新UI
         this.updateUIAfterLogout();
@@ -265,6 +316,9 @@ class MerchantApp {
         this.elements.username.textContent = this.state.currentUser.username;
         this.elements.loginBtn.style.display = 'none';
         this.elements.logoutBtn.style.display = 'block';
+
+        // 更新页面标题，显示当前登录用户（支持多标签页识别）
+        document.title = `反馈系统 - 商家端 (${this.state.currentUser.username})`;
     }
 
     /**
@@ -274,6 +328,9 @@ class MerchantApp {
         this.elements.username.textContent = '未登录';
         this.elements.loginBtn.style.display = 'block';
         this.elements.logoutBtn.style.display = 'none';
+
+        // 恢复页面标题
+        document.title = '反馈系统 - 商家端';
 
         // 清空反馈列表
         this.elements.feedbackList.innerHTML = '';
@@ -293,7 +350,7 @@ class MerchantApp {
     connectWebSocket() {
         if (!this.state.currentUser) return;
 
-        const token = localStorage.getItem(CONFIG.STORAGE_KEYS.MERCHANT_TOKEN);
+        const token = StorageUtils.getToken();
         if (!token) {
             this.showAlert('登录已过期，请重新登录', 'warning');
             this.handleLogout();
@@ -470,7 +527,10 @@ class MerchantApp {
         this.updateFeedbackStatus(feedbackId, newStatus);
 
         if (Number(feedbackId) === Number(this.state.currentFeedbackId)) {
-            this.elements.currentFeedbackStatus.textContent = this.getStatusText(newStatus);
+            this.elements.currentFeedbackStatus.innerHTML = this.getStatusText(newStatus);
+
+            // 更新消息输入状态
+            this.updateMessageInputState(newStatus);
 
             const systemMessage = {
                 event: CONFIG.WS_EVENT_TYPE.MESSAGE,
@@ -568,9 +628,29 @@ class MerchantApp {
         if (!this.state.currentUser) return;
 
         try {
-            // 商家只获取发给自己的反馈
-            const response = await HttpUtils.get(`${CONFIG.ENDPOINTS.FEEDBACK.GET_BY_TARGET}?target_id=${this.state.currentUser.id}&target_type=${CONFIG.TARGET_TYPE.MERCHANT}`);
-            this.state.feedbacks = response.data || [];
+            // 商家需要获取两种反馈：1. 发给自己的反馈 2. 自己创建的反馈
+            const [targetResponse, creatorResponse] = await Promise.all([
+                // 获取发给自己的反馈（用户向商家的反馈）
+                // 前后端对接：GET /api/feedback/target?target_id=X&target_type=1 → internal/handler/feedback.go GetByTarget()方法
+                // 查询参数：target_id(商家ID), target_type(目标类型：1=商家)
+                HttpUtils.get(`${CONFIG.ENDPOINTS.FEEDBACK.GET_BY_TARGET}?target_id=${this.state.currentUser.id}&target_type=${CONFIG.TARGET_TYPE.MERCHANT}`),
+                // 获取自己创建的反馈（商家向管理员的反馈）
+                // 前后端对接：GET /api/feedback/creator?creator_id=X&creator_type=2 → internal/handler/feedback.go GetByCreator()方法
+                // 查询参数：creator_id(商家ID), creator_type(用户类型：2=商家)
+                HttpUtils.get(`${CONFIG.ENDPOINTS.FEEDBACK.GET_BY_CREATOR}?creator_id=${this.state.currentUser.id}&creator_type=${CONFIG.USER_TYPE_NUMBERS.MERCHANT}`)
+            ]);
+
+            // 合并两种反馈，去重
+            const targetFeedbacks = targetResponse.data || [];
+            const creatorFeedbacks = creatorResponse.data || [];
+
+            // 使用Map去重，以ID为键
+            const feedbackMap = new Map();
+            [...targetFeedbacks, ...creatorFeedbacks].forEach(feedback => {
+                feedbackMap.set(feedback.id, feedback);
+            });
+
+            this.state.feedbacks = Array.from(feedbackMap.values());
             this.renderFeedbackList();
         } catch (error) {
             console.error('加载反馈列表失败:', error);
@@ -613,12 +693,14 @@ class MerchantApp {
 
             item.innerHTML = `
             <div class="d-flex justify-content-between align-items-center">
-                <h6 class="mb-1">${feedback.title}</h6>
-                    <span class="badge ${statusClass}">${this.getStatusText(feedback.status)}</span>
+                <h6 class="mb-1 fw-bold text-dark">${feedback.title}</h6>
+                <span class="badge ${statusClass}">${this.getStatusText(feedback.status)}</span>
             </div>
-            <p class="mb-1 text-truncate">${feedback.content}</p>
-                <small class="text-muted">${DateTimeUtils.formatDate(feedback.created_at)}</small>
-            ${feedback.unreadCount ? `<span class="unread-indicator" title="${feedback.unreadCount}条未读消息"></span>` : ''}
+            <p class="mb-2 text-truncate text-muted">${feedback.content}</p>
+            <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted"><i class="fas fa-calendar-alt me-1"></i>${DateTimeUtils.formatDate(feedback.created_at)}</small>
+                ${feedback.unreadCount ? `<span class="badge bg-danger rounded-pill">${feedback.unreadCount}</span>` : ''}
+            </div>
         `;
 
             item.addEventListener('click', () => {
@@ -647,7 +729,10 @@ class MerchantApp {
         const feedback = this.state.feedbacks.find(f => Number(f.id) === Number(feedbackId));
         if (feedback) {
             this.elements.currentFeedbackTitle.textContent = feedback.title;
-            this.elements.currentFeedbackStatus.textContent = this.getStatusText(feedback.status);
+            this.elements.currentFeedbackStatus.innerHTML = this.getStatusText(feedback.status);
+
+            // 检查反馈状态，如果已解决则禁用消息输入
+            this.updateMessageInputState(feedback.status);
         }
 
         // 显示消息输入区域和状态下拉菜单
@@ -668,6 +753,9 @@ class MerchantApp {
      */
     async loadFeedbackMessages(feedbackId) {
         try {
+            // 前后端对接：GET /api/message/feedback/{feedbackId} → internal/handler/feedback_message.go GetByFeedbackID()方法
+            // 路径参数：feedback_id(反馈ID)
+            // 响应数据：{code, message, data: [消息列表]}
             const response = await HttpUtils.get(`${CONFIG.ENDPOINTS.FEEDBACK_MESSAGE.GET_BY_FEEDBACK_ID}${feedbackId}`);
             const messages = response.data || [];
 
@@ -757,7 +845,11 @@ class MerchantApp {
         // 清空输入框
         this.elements.messageInput.value = '';
 
-        // 只通过API发送消息（后端会自动广播WebSocket消息）
+        // 立即显示自己发送的消息
+        this.appendMessage(message);
+        this.scrollChatToBottom();
+
+        // 保存消息到数据库（后端会自动广播WebSocket消息给其他用户）
         await this.saveMessageToDatabase(message);
     }
 
@@ -775,6 +867,10 @@ class MerchantApp {
                 sender_type: Number(CONFIG.USER_TYPE_NUMBERS.MERCHANT)
             };
 
+            // 前后端对接：POST /api/message → internal/handler/feedback_message.go Create()方法
+            // 请求数据：{feedback_id, content, content_type, sender_id, sender_type}
+            // 响应数据：{code, message, data: 创建的消息对象}
+            // 注意：创建消息后，后端会通过WebSocket自动推送给相关用户
             await HttpUtils.post(CONFIG.ENDPOINTS.FEEDBACK_MESSAGE.CREATE, messageData);
         } catch (error) {
             console.error('保存消息到数据库失败:', error);
@@ -1056,7 +1152,7 @@ class MerchantApp {
 
             // 更新当前反馈状态显示
             if (Number(feedbackId) === Number(this.state.currentFeedbackId)) {
-                this.elements.currentFeedbackStatus.textContent = this.getStatusText(newStatus);
+                this.elements.currentFeedbackStatus.innerHTML = this.getStatusText(newStatus);
             }
 
             // 重新渲染反馈列表以更新状态标签
@@ -1180,13 +1276,13 @@ class MerchantApp {
     getStatusText(status) {
         switch (status) {
             case CONFIG.FEEDBACK_STATUS.OPEN:
-                return '待处理';
+                return '<i class="fas fa-clock me-1"></i>待处理';
             case CONFIG.FEEDBACK_STATUS.IN_PROGRESS:
-                return '处理中';
+                return '<i class="fas fa-spinner me-1"></i>处理中';
             case CONFIG.FEEDBACK_STATUS.RESOLVED:
-                return '已解决';
+                return '<i class="fas fa-check-circle me-1"></i>已解决';
             default:
-                return '未知状态';
+                return '<i class="fas fa-question me-1"></i>未知状态';
         }
     }
 
@@ -1248,6 +1344,83 @@ class MerchantApp {
             alertDiv.classList.remove('show');
             setTimeout(() => alertDiv.remove(), 150);
         }, CONFIG.UI.ALERT.AUTO_HIDE_DELAY);
+    }
+
+    /**
+     * 更新消息输入状态
+     * @param {number} feedbackStatus - 反馈状态
+     */
+    updateMessageInputState(feedbackStatus) {
+        const isResolved = feedbackStatus === CONFIG.FEEDBACK_STATUS.RESOLVED; // 状态为3表示已解决
+
+        // 禁用或启用输入框和发送按钮
+        this.elements.messageInput.disabled = isResolved;
+        this.elements.sendMessageBtn.disabled = isResolved;
+        this.elements.imageBtn.disabled = isResolved;
+
+        if (isResolved) {
+            this.elements.messageInput.placeholder = '反馈已解决，无法发送新消息';
+            this.elements.messageInputArea.classList.add('disabled');
+        } else {
+            this.elements.messageInput.placeholder = '输入消息...';
+            this.elements.messageInputArea.classList.remove('disabled');
+        }
+    }
+
+    /**
+     * 处理系统反馈提交
+     */
+    async handleSubmitSystemFeedback() {
+        if (!this.state.currentUser) {
+            this.showAlert('请先登录', 'warning');
+            return;
+        }
+
+        const title = this.elements.systemFeedbackTitle.value.trim();
+        const content = this.elements.systemFeedbackContent.value.trim();
+        // 使用用户注册时的联系方式
+        const contact = this.state.currentUser.contact || '';
+
+        // 输入验证
+        if (!title || !content) {
+            this.showAlert('请填写问题标题和详情', 'warning');
+            return;
+        }
+
+        if (title.length > 255) {
+            this.showAlert('问题标题不能超过255个字符', 'warning');
+            return;
+        }
+
+        if (content.length > 1000) {
+            this.showAlert('问题详情不能超过1000个字符', 'warning');
+            return;
+        }
+
+        try {
+            const feedbackData = {
+                title: title,
+                content: content,
+                contact: contact,
+                creator_id: this.state.currentUser.id,
+                creator_type: CONFIG.USER_TYPE_NUMBERS.MERCHANT,
+                target_id: 1, // 管理员ID固定为1
+                target_type: CONFIG.TARGET_TYPE.ADMIN
+            };
+
+            const response = await HttpUtils.post(CONFIG.ENDPOINTS.FEEDBACK.CREATE, feedbackData);
+
+            // 关闭模态框
+            this.elements.systemFeedbackModal.hide();
+
+            // 重置表单
+            this.elements.systemFeedbackForm.reset();
+
+            this.showAlert('系统反馈已提交，管理员会尽快处理', 'success');
+        } catch (error) {
+            console.error('提交系统反馈失败:', error);
+            this.showAlert('提交系统反馈失败: ' + error.message, 'danger');
+        }
     }
 }
 

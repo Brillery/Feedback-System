@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户注册 - 反馈系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/enhanced-styles.css">
+    <link rel="icon" href="/static/images/favicon.ico">
+</head>
+
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="text-center mb-0">
+                            <i class="fas fa-user-plus me-2"></i>用户注册
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <form id="registerForm">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">用户名</label>
+                                <input type="text" class="form-control" id="username" name="username" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">密码</label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="confirmPassword" class="form-label">确认密码</label>
+                                <input type="password" class="form-control" id="confirmPassword" name="confirmPassword"
+                                    required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="contact" class="form-label">联系方式</label>
+                                <input type="text" class="form-control" id="contact" name="contact"
+                                    placeholder="手机号、邮箱或其他联系方式" maxlength="100">
+                                <div class="form-text">用于反馈时的联系，可选填写</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="userType" class="form-label">用户类型</label>
+                                <select class="form-select" id="userType" name="userType" required>
+                                    <option value="">请选择用户类型</option>
+                                    <option value="1">普通用户</option>
+                                    <option value="2">商家</option>
+                                </select>
+                            </div>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-user-plus me-1"></i>注册
+                                </button>
+                            </div>
+                        </form>
+                        <div class="text-center mt-3">
+                            <p>已有账号？ <a href="/" id="loginLink">
+                                    <i class="fas fa-sign-in-alt me-1"></i>立即登录
+                                </a></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示消息 -->
+    <div id="alertContainer" class="position-fixed top-0 start-50 translate-middle-x"
+        style="z-index: 1050; margin-top: 20px;">
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/config.js?v=1.1.0"></script>
+    <script src="/static/js/utils.js"></script>
+    <script src="/static/js/register.js"></script>
+</body>
+
+</html>

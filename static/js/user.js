@@ -76,6 +76,8 @@ class UserApp {
             feedbackTitle: document.getElementById('feedbackTitle'),
             feedbackContent: document.getElementById('feedbackContent'),
             feedbackType: document.getElementById('feedbackType'),
+            merchantSelectDiv: document.getElementById('merchantSelectDiv'),
+            merchantSelect: document.getElementById('merchantSelect'),
             submitFeedbackBtn: document.getElementById('submitFeedbackBtn')
         };
     }
@@ -84,6 +86,12 @@ class UserApp {
      * 初始化应用
      */
     init() {
+        // 清理localStorage中的旧数据（只在第一次加载时执行）
+        if (!sessionStorage.getItem('localStorage_cleaned')) {
+            StorageUtils.clearAllLocalStorageData();
+            sessionStorage.setItem('localStorage_cleaned', 'true');
+        }
+
         this.bindEvents();
         this.checkLoginStatus();
     }
@@ -117,6 +125,11 @@ class UserApp {
 
         this.elements.submitFeedbackBtn.addEventListener('click', () => {
             this.handleSubmitFeedback();
+        });
+
+        // 反馈类型变化事件
+        this.elements.feedbackType.addEventListener('change', () => {
+            this.handleFeedbackTypeChange();
         });
 
         // 消息相关事件
@@ -156,6 +169,9 @@ class UserApp {
                 this.state.currentUser = savedUser;
 
                 // 验证令牌有效性
+                // 前后端对接：GET /api/user/me → internal/handler/user.go GetCurrentUser()方法
+                // 需要Authorization头：Bearer {token}
+                // 响应数据：{code, message, data: user对象}
                 const response = await HttpUtils.get(CONFIG.ENDPOINTS.USER.CURRENT);
 
                 if (response.code === CONFIG.ERROR_CODES.SUCCESS) {
@@ -204,12 +220,16 @@ class UserApp {
             };
 
             // 发送登录请求
+            // 前后端对接：POST /api/user/login → internal/handler/user.go Login()方法
+            // 请求数据：{username, password, user_type}
+            // 响应数据：{code, message, data: {user, token}}
             const response = await HttpUtils.post(CONFIG.ENDPOINTS.USER.LOGIN, loginData);
 
             // 保存用户信息和令牌
             this.state.currentUser = {
                 ...response.data.user
             };
+
             StorageUtils.setUserData(response.data.user);
             StorageUtils.setToken(response.data.token);
             StorageUtils.setUserType(CONFIG.USER_TYPE.USER);
@@ -267,6 +287,9 @@ class UserApp {
         this.elements.username.textContent = this.state.currentUser.username;
         this.elements.loginBtn.style.display = 'none';
         this.elements.logoutBtn.style.display = 'block';
+
+        // 更新页面标题，显示当前登录用户（支持多标签页识别）
+        document.title = `反馈系统 - 用户端 (${this.state.currentUser.username})`;
     }
 
     /**
@@ -276,6 +299,9 @@ class UserApp {
         this.elements.username.textContent = '未登录';
         this.elements.loginBtn.style.display = 'block';
         this.elements.logoutBtn.style.display = 'none';
+
+        // 恢复页面标题
+        document.title = '反馈系统 - 用户端';
 
         // 清空反馈列表
         this.elements.feedbackList.innerHTML = '';
@@ -294,7 +320,7 @@ class UserApp {
     connectWebSocket() {
         if (!this.state.currentUser) return;
 
-        const token = localStorage.getItem(CONFIG.STORAGE_KEYS.USER_TOKEN);
+        const token = StorageUtils.getToken();
         if (!token) {
             this.showAlert('登录已过期，请重新登录', 'warning');
             this.handleLogout();
@@ -459,7 +485,10 @@ class UserApp {
         this.updateFeedbackStatus(feedbackId, newStatus);
 
         if (feedbackId === this.state.currentFeedbackId) {
-            this.elements.currentFeedbackStatus.textContent = this.getStatusText(newStatus);
+            this.elements.currentFeedbackStatus.innerHTML = this.getStatusText(newStatus);
+
+            // 更新消息输入状态
+            this.updateMessageInputState(newStatus);
 
             const systemMessage = {
                 event: CONFIG.WS_EVENT_TYPE.MESSAGE,
@@ -526,8 +555,13 @@ class UserApp {
 
         try {
             // 用户只获取自己创建的反馈
-            const response = await HttpUtils.get(`${CONFIG.ENDPOINTS.FEEDBACK.GET_BY_CREATOR}?creator_id=${this.state.currentUser.id}&creator_type=${CONFIG.USER_TYPE_NUMBERS.USER}`);
+            // 前后端对接：GET /api/feedback/creator?creator_id=X&creator_type=1 → internal/handler/feedback.go GetByCreator()方法
+            // 查询参数：creator_id(用户ID), creator_type(用户类型：1=用户)
+            // 响应数据：{code, message, data: [反馈列表]}
+            const url = `${CONFIG.ENDPOINTS.FEEDBACK.GET_BY_CREATOR}?creator_id=${this.state.currentUser.id}&creator_type=${CONFIG.USER_TYPE_NUMBERS.USER}`;
+            const response = await HttpUtils.get(url);
             this.state.feedbacks = response.data || [];
+
             this.renderFeedbackList();
         } catch (error) {
             console.error('加载反馈列表失败:', error);
@@ -555,12 +589,14 @@ class UserApp {
 
             item.innerHTML = `
             <div class="d-flex justify-content-between align-items-center">
-                <h6 class="mb-1">${feedback.title}</h6>
-                    <span class="badge ${statusClass}">${this.getStatusText(feedback.status)}</span>
+                <h6 class="mb-1 fw-bold text-dark">${feedback.title}</h6>
+                <span class="badge ${statusClass}">${this.getStatusText(feedback.status)}</span>
             </div>
-            <p class="mb-1 text-truncate">${feedback.content}</p>
-                <small class="text-muted">${DateTimeUtils.formatDate(feedback.created_at)}</small>
-            ${feedback.unreadCount ? `<span class="unread-indicator" title="${feedback.unreadCount}条未读消息"></span>` : ''}
+            <p class="mb-2 text-truncate text-muted">${feedback.content}</p>
+            <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted"><i class="fas fa-calendar-alt me-1"></i>${DateTimeUtils.formatDate(feedback.created_at)}</small>
+                ${feedback.unreadCount ? `<span class="badge bg-danger rounded-pill">${feedback.unreadCount}</span>` : ''}
+            </div>
         `;
 
             item.addEventListener('click', () => {
@@ -589,7 +625,10 @@ class UserApp {
         const feedback = this.state.feedbacks.find(f => f.id === feedbackId);
         if (feedback) {
             this.elements.currentFeedbackTitle.textContent = feedback.title;
-            this.elements.currentFeedbackStatus.textContent = this.getStatusText(feedback.status);
+            this.elements.currentFeedbackStatus.innerHTML = this.getStatusText(feedback.status);
+
+            // 检查反馈状态，如果已解决则禁用消息输入
+            this.updateMessageInputState(feedback.status);
         }
 
         // 显示消息输入区域
@@ -617,6 +656,9 @@ class UserApp {
      */
     async loadFeedbackMessages(feedbackId) {
         try {
+            // 前后端对接：GET /api/message/feedback/{feedbackId} → internal/handler/feedback_message.go GetByFeedbackID()方法
+            // 路径参数：feedback_id(反馈ID)
+            // 响应数据：{code, message, data: [消息列表]}
             const response = await HttpUtils.get(`${CONFIG.ENDPOINTS.FEEDBACK_MESSAGE.GET_BY_FEEDBACK_ID}${feedbackId}`);
             const messages = response.data || [];
 
@@ -689,15 +731,36 @@ class UserApp {
         }
 
         try {
+            let targetId, targetType;
+
+            if (type === 'product') {
+                // 产品问题：检查是否选择了商家
+                const selectedMerchantId = this.elements.merchantSelect.value;
+                if (!selectedMerchantId) {
+                    this.showAlert('请选择商家', 'warning');
+                    return;
+                }
+                targetId = parseInt(selectedMerchantId);
+                targetType = CONFIG.TARGET_TYPE.MERCHANT;
+            } else {
+                // 系统问题：发给管理员（ID=1）
+                targetId = 1;
+                targetType = CONFIG.TARGET_TYPE.ADMIN;
+            }
+
             const feedbackData = {
                 title: title,
                 content: content,
+                contact: this.state.currentUser.contact || '', // 使用用户注册时的联系方式
                 creator_id: this.state.currentUser.id,
                 creator_type: CONFIG.USER_TYPE_NUMBERS.USER,
-                target_id: type === 'product' ? 2 : 1, // 产品问题发给商家(ID=2)，系统问题发给管理员(ID=1)
-                target_type: type === 'product' ? CONFIG.TARGET_TYPE.MERCHANT : CONFIG.TARGET_TYPE.ADMIN
+                target_id: targetId,
+                target_type: targetType
             };
 
+            // 前后端对接：POST /api/feedback → internal/handler/feedback.go Create()方法
+            // 请求数据：{title, content, contact, creator_id, creator_type, target_id, target_type}
+            // 响应数据：{code, message, data: 创建的反馈对象}
             const response = await HttpUtils.post(CONFIG.ENDPOINTS.FEEDBACK.CREATE, feedbackData);
 
             // 关闭模态框
@@ -705,6 +768,7 @@ class UserApp {
 
             // 重置表单
             this.elements.newFeedbackForm.reset();
+            this.elements.merchantSelectDiv.style.display = 'none';
 
             // 重新加载反馈列表
             await this.loadFeedbacks();
@@ -770,7 +834,11 @@ class UserApp {
         // 清空输入框
         this.elements.messageInput.value = '';
 
-        // 只通过API发送消息（后端会自动广播WebSocket消息）
+        // 立即显示自己发送的消息
+        this.appendMessage(message);
+        this.scrollChatToBottom();
+
+        // 保存消息到数据库（后端会自动广播WebSocket消息给其他用户）
         await this.saveMessageToDatabase(message);
     }
 
@@ -788,6 +856,10 @@ class UserApp {
                 sender_type: Number(message.sender.type)
             };
 
+            // 前后端对接：POST /api/message → internal/handler/feedback_message.go Create()方法
+            // 请求数据：{feedback_id, content, content_type, sender_id, sender_type}
+            // 响应数据：{code, message, data: 创建的消息对象}
+            // 注意：创建消息后，后端会通过WebSocket自动推送给相关用户
             const response = await HttpUtils.post(CONFIG.ENDPOINTS.FEEDBACK_MESSAGE.CREATE, messageData);
         } catch (error) {
             console.error('保存消息到数据库失败:', error);
@@ -905,11 +977,8 @@ class UserApp {
                 }
             };
 
-            // 发送消息
-            this.state.wsConnection.send(JSON.stringify(message));
-
-            // 同时保存到数据库
-            this.saveMessageToDatabase(message);
+            // 只通过API保存消息（后端会自动广播WebSocket消息）
+            await this.saveMessageToDatabase(message);
 
             // 立即显示自己发送的图片消息
             this.appendMessage(message);
@@ -1081,6 +1150,73 @@ class UserApp {
     }
 
     /**
+     * 更新消息输入状态
+     * @param {number} feedbackStatus - 反馈状态
+     */
+    updateMessageInputState(feedbackStatus) {
+        const isResolved = feedbackStatus === CONFIG.FEEDBACK_STATUS.RESOLVED; // 状态为3表示已解决
+
+        // 禁用或启用输入框和发送按钮
+        this.elements.messageInput.disabled = isResolved;
+        this.elements.sendMessageBtn.disabled = isResolved;
+        this.elements.imageBtn.disabled = isResolved;
+
+        if (isResolved) {
+            this.elements.messageInput.placeholder = '反馈已解决，无法发送新消息';
+            this.elements.messageInputArea.classList.add('disabled');
+        } else {
+            this.elements.messageInput.placeholder = '输入消息...';
+            this.elements.messageInputArea.classList.remove('disabled');
+        }
+    }
+
+    /**
+     * 处理反馈类型变化
+     */
+    async handleFeedbackTypeChange() {
+        const feedbackType = this.elements.feedbackType.value;
+
+        if (feedbackType === 'product') {
+            // 显示商家选择
+            this.elements.merchantSelectDiv.style.display = 'block';
+            await this.loadMerchants();
+        } else {
+            // 隐藏商家选择
+            this.elements.merchantSelectDiv.style.display = 'none';
+        }
+    }
+
+    /**
+     * 加载商家列表
+     */
+    async loadMerchants() {
+        try {
+            const response = await HttpUtils.get(CONFIG.ENDPOINTS.USER.MERCHANTS);
+
+            // 检查响应格式
+            const merchants = response.data || response;
+
+            if (!Array.isArray(merchants)) {
+                throw new Error('商家数据格式错误，期望数组格式');
+            }
+
+            // 清空现有选项
+            this.elements.merchantSelect.innerHTML = '<option value="" selected disabled>请选择商家</option>';
+
+            // 添加商家选项
+            merchants.forEach(merchant => {
+                const option = document.createElement('option');
+                option.value = merchant.id;
+                option.textContent = merchant.username;
+                this.elements.merchantSelect.appendChild(option);
+            });
+        } catch (error) {
+            console.error('加载商家列表失败:', error);
+            this.showAlert('加载商家列表失败', 'danger');
+        }
+    }
+
+    /**
      * 更新反馈状态
      * @param {number} feedbackId - 反馈ID
      * @param {number} newStatus - 新状态
@@ -1127,13 +1263,13 @@ class UserApp {
     getStatusText(status) {
         switch (status) {
             case CONFIG.FEEDBACK_STATUS.OPEN:
-                return '待处理';
+                return '<i class="fas fa-clock me-1"></i>待处理';
             case CONFIG.FEEDBACK_STATUS.IN_PROGRESS:
-                return '处理中';
+                return '<i class="fas fa-spinner me-1"></i>处理中';
             case CONFIG.FEEDBACK_STATUS.RESOLVED:
-                return '已解决';
+                return '<i class="fas fa-check-circle me-1"></i>已解决';
             default:
-                return '未知状态';
+                return '<i class="fas fa-question me-1"></i>未知状态';
         }
     }
 

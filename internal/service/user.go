@@ -1,6 +1,8 @@
 package service
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"feedback-system/internal/models"
 	"feedback-system/internal/repository"
@@ -18,6 +20,7 @@ type UserService interface {
 	Login(req *models.UserLoginRequest) (*models.UserLoginResponse, error)
 	GetUserByID(id uint64) (*models.User, error)
 	ValidateToken(token string) (*models.User, error)
+	GetMerchants() ([]*models.User, error)
 }
 
 // userService 用户服务实现
@@ -43,7 +46,8 @@ func (s *userService) Register(req *models.UserRegisterRequest) (*models.User, e
 	// 创建新用户
 	user := &models.User{
 		Username: req.Username,
-		Password: req.Password, // 实际项目中应该对密码进行加密
+		Password: hashPassword(req.Password), // 对密码进行加密
+		Contact:  req.Contact,
 		UserType: req.UserType,
 	}
 
@@ -65,7 +69,7 @@ func (s *userService) Login(req *models.UserLoginRequest) (*models.UserLoginResp
 	}
 
 	// 验证密码
-	if user.Password != req.Password { // 实际项目中应该比较加密后的密码
+	if user.Password != hashPassword(req.Password) { // 比较加密后的密码
 		return nil, errors.New("invalid username or password")
 	}
 
@@ -145,4 +149,15 @@ func generateToken(user *models.User) (string, error) {
 	}
 
 	return tokenString, nil
+}
+
+// GetMerchants 获取所有商家用户
+func (s *userService) GetMerchants() ([]*models.User, error) {
+	return s.userRepo.GetMerchants()
+}
+
+// hashPassword 对密码进行MD5加密
+func hashPassword(password string) string {
+	hash := md5.Sum([]byte(password))
+	return hex.EncodeToString(hash[:])
 }

@@ -1,0 +1,576 @@
+/**
+ * 反馈系统 - 增强样式
+ * 在保持原有布局的基础上，优化视觉效果
+ */
+
+/* ==================== 全局样式优化 ==================== */
+
+body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.container-fluid {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    margin: 20px auto;
+    max-width: 1400px;
+    padding: 25px;
+}
+
+/* ==================== 导航栏优化 ==================== */
+
+.navbar {
+    background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%) !important;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
+    margin-bottom: 20px;
+}
+
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.3rem;
+    color: white !important;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.nav-tabs {
+    border: none;
+    margin-bottom: 20px;
+}
+
+.nav-tabs .nav-link {
+    border: none;
+    border-radius: 25px;
+    margin-right: 10px;
+    padding: 10px 20px;
+    background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+    color: #495057;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.nav-tabs .nav-link:hover {
+    background: linear-gradient(45deg, #e9ecef, #dee2e6);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.nav-tabs .nav-link.active {
+    background: linear-gradient(45deg, #4facfe, #00f2fe);
+    color: white;
+    box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+}
+
+/* ==================== 卡片优化 ==================== */
+
+.card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+    background: linear-gradient(90deg, #f8f9fa, #e9ecef);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    border-radius: 15px 15px 0 0 !important;
+    padding: 20px;
+}
+
+.card-header h5 {
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+/* ==================== 按钮优化 ==================== */
+
+.btn {
+    border-radius: 25px;
+    font-weight: 500;
+    padding: 8px 20px;
+    transition: all 0.3s ease;
+    border: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.btn:hover::before {
+    left: 100%;
+}
+
+.btn-primary {
+    background: linear-gradient(45deg, #4facfe, #00f2fe);
+    box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(45deg, #00f2fe, #4facfe);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(79, 172, 254, 0.4);
+}
+
+.btn-success {
+    background: linear-gradient(45deg, #56ab2f, #a8e6cf);
+    box-shadow: 0 4px 15px rgba(86, 171, 47, 0.3);
+}
+
+.btn-success:hover {
+    background: linear-gradient(45deg, #a8e6cf, #56ab2f);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(86, 171, 47, 0.4);
+}
+
+.btn-warning {
+    background: linear-gradient(45deg, #f093fb, #f5576c);
+    box-shadow: 0 4px 15px rgba(240, 147, 251, 0.3);
+}
+
+.btn-warning:hover {
+    background: linear-gradient(45deg, #f5576c, #f093fb);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(240, 147, 251, 0.4);
+}
+
+.btn-secondary {
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.btn-secondary:hover {
+    background: linear-gradient(45deg, #764ba2, #667eea);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-outline-secondary {
+    border: 2px solid #667eea;
+    color: #667eea;
+    background: transparent;
+}
+
+.btn-outline-secondary:hover {
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    border-color: transparent;
+    color: white;
+    transform: translateY(-2px);
+}
+
+.btn-sm {
+    padding: 6px 16px;
+    font-size: 0.875rem;
+}
+
+/* ==================== 反馈列表项优化 ==================== */
+
+.list-group-item {
+    border: none;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 15px 20px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+}
+
+.list-group-item:hover {
+    background: linear-gradient(90deg, rgba(79, 172, 254, 0.05), rgba(0, 242, 254, 0.05));
+    transform: translateX(5px);
+}
+
+.list-group-item.active {
+    background: linear-gradient(90deg, #4facfe, #00f2fe);
+    color: white;
+    box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
+}
+
+.list-group-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: white;
+    border-radius: 0 2px 2px 0;
+}
+
+/* ==================== 消息样式优化 ==================== */
+
+.chat-container {
+    max-height: 500px;
+    overflow-y: auto;
+    padding: 20px;
+    background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
+    border-radius: 10px;
+}
+
+.message {
+    margin-bottom: 15px;
+    animation: fadeInUp 0.3s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.message-sent {
+    text-align: right;
+}
+
+.message-sent .message-content {
+    background: linear-gradient(45deg, #4facfe, #00f2fe);
+    color: white;
+    border-radius: 20px 20px 5px 20px;
+    padding: 12px 18px;
+    display: inline-block;
+    max-width: 70%;
+    box-shadow: 0 4px 12px rgba(79, 172, 254, 0.3);
+}
+
+.message-received {
+    text-align: left;
+}
+
+.message-received .message-content {
+    background: linear-gradient(45deg, #ffffff, #f8f9fa);
+    color: #2c3e50;
+    border-radius: 20px 20px 20px 5px;
+    padding: 12px 18px;
+    display: inline-block;
+    max-width: 70%;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.message-system {
+    text-align: center;
+}
+
+.message-system .message-content {
+    background: linear-gradient(45deg, #ffeaa7, #fab1a0);
+    color: #2d3436;
+    border-radius: 15px;
+    padding: 10px 15px;
+    display: inline-block;
+    font-size: 0.9rem;
+    box-shadow: 0 2px 8px rgba(255, 234, 167, 0.4);
+}
+
+.message-info {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-top: 5px;
+    opacity: 0.8;
+}
+
+.user-name-hover {
+    cursor: pointer;
+    text-decoration: underline dotted;
+    transition: all 0.2s ease;
+}
+
+.user-name-hover:hover {
+    color: #4facfe;
+    text-decoration: underline solid;
+}
+
+/* ==================== 表单优化 ==================== */
+
+.form-control {
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+    padding: 12px 15px;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.form-control:focus {
+    border-color: #4facfe;
+    box-shadow: 0 0 0 0.2rem rgba(79, 172, 254, 0.25);
+    background: white;
+}
+
+.form-select {
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+    padding: 12px 15px;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.form-select:focus {
+    border-color: #4facfe;
+    box-shadow: 0 0 0 0.2rem rgba(79, 172, 254, 0.25);
+}
+
+.form-label {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 8px;
+}
+
+/* ==================== 模态框优化 ==================== */
+
+.modal-content {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+}
+
+.modal-header {
+    background: linear-gradient(90deg, #f8f9fa, #e9ecef);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    border-radius: 15px 15px 0 0;
+    padding: 20px;
+}
+
+.modal-title {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.modal-body {
+    padding: 25px;
+}
+
+.modal-footer {
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 20px;
+    background: rgba(248, 249, 250, 0.5);
+    border-radius: 0 0 15px 15px;
+}
+
+/* ==================== 状态标签优化 ==================== */
+
+.badge {
+    border-radius: 15px;
+    padding: 6px 12px;
+    font-weight: 500;
+    font-size: 0.75rem;
+}
+
+.status-open {
+    background: linear-gradient(45deg, #ff6b6b, #ffa8a8);
+    color: white;
+}
+
+.status-in-progress {
+    background: linear-gradient(45deg, #4ecdc4, #44a08d);
+    color: white;
+}
+
+.status-resolved {
+    background: linear-gradient(45deg, #56ab2f, #a8e6cf);
+    color: white;
+}
+
+/* ==================== 下拉菜单优化 ==================== */
+
+.dropdown-menu {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 8px;
+}
+
+.dropdown-item {
+    border-radius: 8px;
+    padding: 10px 15px;
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.dropdown-item:hover {
+    background: linear-gradient(45deg, #4facfe, #00f2fe);
+    color: white;
+    transform: translateX(3px);
+}
+
+.dropdown-item.active {
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    color: white;
+}
+
+/* ==================== 输入区域优化 ==================== */
+
+.input-group {
+    border-radius: 25px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.input-group .form-control {
+    border: none;
+    border-radius: 0;
+    background: white;
+    padding: 15px 20px;
+}
+
+.input-group .btn {
+    border-radius: 0;
+    padding: 15px 25px;
+}
+
+/* ==================== 图片预览优化 ==================== */
+
+#imagePreview img {
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+}
+
+#imagePreview img:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* ==================== 悬浮提示优化 ==================== */
+
+#contactTooltip {
+    background: linear-gradient(45deg, #2c3e50, #34495e) !important;
+    border-radius: 10px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ==================== 滚动条优化 ==================== */
+
+.chat-container::-webkit-scrollbar,
+.list-group::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chat-container::-webkit-scrollbar-track,
+.list-group::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 3px;
+}
+
+.chat-container::-webkit-scrollbar-thumb,
+.list-group::-webkit-scrollbar-thumb {
+    background: linear-gradient(45deg, #4facfe, #00f2fe);
+    border-radius: 3px;
+}
+
+.chat-container::-webkit-scrollbar-thumb:hover,
+.list-group::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(45deg, #00f2fe, #4facfe);
+}
+
+/* ==================== 动画效果 ==================== */
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.btn:active {
+    animation: pulse 0.2s ease;
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.feedback-item {
+    animation: slideInRight 0.3s ease;
+}
+
+/* ==================== 响应式优化 ==================== */
+
+@media (max-width: 768px) {
+    .container-fluid {
+        margin: 10px;
+        padding: 15px;
+        border-radius: 10px;
+    }
+    
+    .card {
+        border-radius: 10px;
+    }
+    
+    .btn {
+        padding: 10px 15px;
+        font-size: 0.9rem;
+    }
+}
+
+/* ==================== 特殊效果 ==================== */
+
+.typing-indicator {
+    color: #4facfe;
+    font-style: italic;
+    animation: pulse 1.5s infinite;
+}
+
+.alert {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.alert-success {
+    background: linear-gradient(45deg, rgba(86, 171, 47, 0.1), rgba(168, 230, 207, 0.1));
+    border-left: 4px solid #56ab2f;
+}
+
+.alert-danger {
+    background: linear-gradient(45deg, rgba(255, 107, 107, 0.1), rgba(255, 168, 168, 0.1));
+    border-left: 4px solid #ff6b6b;
+}
+
+.alert-warning {
+    background: linear-gradient(45deg, rgba(240, 147, 251, 0.1), rgba(245, 87, 108, 0.1));
+    border-left: 4px solid #f093fb;
+}
+
+.alert-info {
+    background: linear-gradient(45deg, rgba(79, 172, 254, 0.1), rgba(0, 242, 254, 0.1));
+    border-left: 4px solid #4facfe;
+}

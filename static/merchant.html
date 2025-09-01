@@ -6,22 +6,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>反馈系统 - 商家端</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/enhanced-styles.css">
+    <link rel="icon" href="/static/images/favicon.ico">
 </head>
 
 <body>
     <div class="container">
         <header class="py-3 mb-4 border-bottom">
             <div class="d-flex align-items-center">
-                <h1 class="h4 me-auto">反馈系统 - 商家端</h1>
+                <h1 class="h4 me-auto">
+                    <i class="fas fa-store me-2 text-primary"></i>反馈系统 - 商家端
+                </h1>
                 <div class="dropdown">
                     <button class="btn btn-outline-primary dropdown-toggle" type="button" id="userDropdown"
                         data-bs-toggle="dropdown" aria-expanded="false">
-                        <span id="username">未登录</span>
+                        <i class="fas fa-store me-2"></i><span id="username">未登录</span>
                     </button>
                     <ul class="dropdown-menu" aria-labelledby="userDropdown">
-                        <li><a class="dropdown-item" href="#" id="loginBtn">登录</a></li>
-                        <li><a class="dropdown-item" href="#" id="logoutBtn" style="display: none;">退出登录</a></li>
+                        <li><a class="dropdown-item" href="#" id="loginBtn">
+                                <i class="fas fa-sign-in-alt me-2"></i>登录
+                            </a></li>
+                        <li><a class="dropdown-item" href="#" id="logoutBtn" style="display: none;">
+                                <i class="fas fa-sign-out-alt me-2"></i>退出登录
+                            </a></li>
                     </ul>
                 </div>
             </div>
@@ -32,19 +41,32 @@
             <div class="col-md-4 mb-4">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">用户反馈</h5>
-                        <div class="btn-group">
-                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
-                                id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                筛选
+                        <h5 class="mb-0">我的反馈</h5>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-primary" id="newSystemFeedbackBtn" title="向管理员反馈系统问题">
+                                <i class="fas fa-bug me-1"></i>系统反馈
                             </button>
-                            <ul class="dropdown-menu" aria-labelledby="filterDropdown">
-                                <li><a class="dropdown-item filter-item active" href="#" data-filter="all">全部</a></li>
-                                <li><a class="dropdown-item filter-item" href="#" data-filter="open">待处理</a></li>
-                                <li><a class="dropdown-item filter-item" href="#" data-filter="in_progress">处理中</a></li>
-                                <li><a class="dropdown-item filter-item" href="#" data-filter="resolved">已解决</a></li>
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                                    id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-filter me-1"></i>筛选
+                                </button>
+                                <ul class="dropdown-menu" aria-labelledby="filterDropdown">
+                                    <li><a class="dropdown-item filter-item active" href="#" data-filter="all">
+                                            <i class="fas fa-list me-2"></i>全部
+                                        </a></li>
+                                    <li><a class="dropdown-item filter-item" href="#" data-filter="open">
+                                            <i class="fas fa-clock me-2"></i>待处理
+                                        </a></li>
+                                    <li><a class="dropdown-item filter-item" href="#" data-filter="in_progress">
+                                            <i class="fas fa-spinner me-2"></i>处理中
+                                        </a></li>
+                                    <li><a class="dropdown-item filter-item" href="#" data-filter="resolved">
+                                            <i class="fas fa-check-circle me-2"></i>已解决
+                                        </a></li>
 
-                            </ul>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                     <div class="list-group list-group-flush" id="feedbackList">
@@ -68,8 +90,10 @@
                             </button>
                             <ul class="dropdown-menu" aria-labelledby="statusDropdownBtn">
                                 <li><a class="dropdown-item status-item" href="#" data-status="open">待处理</a></li>
-                                <li><a class="dropdown-item status-item" href="#" data-status="in_progress">处理中</a></li>
-                                <li><a class="dropdown-item status-item" href="#" data-status="resolved">已解决</a></li>
+                                <li><a class="dropdown-item status-item" href="#" data-status="in_progress">处理中</a>
+                                </li>
+                                <li><a class="dropdown-item status-item" href="#" data-status="resolved">已解决</a>
+                                </li>
 
                             </ul>
                         </div>
@@ -83,8 +107,12 @@
                     <div class="card-footer" id="messageInputArea" style="display: none;">
                         <div class="input-group">
                             <input type="text" class="form-control" id="messageInput" placeholder="输入消息...">
-                            <button class="btn btn-outline-secondary" id="imageBtn" title="发送图片">📷</button>
-                            <button class="btn btn-primary" id="sendMessageBtn">发送</button>
+                            <button class="btn btn-outline-secondary" id="imageBtn" title="发送图片">
+                                <i class="fas fa-image"></i>
+                            </button>
+                            <button class="btn btn-primary" id="sendMessageBtn">
+                                <i class="fas fa-paper-plane me-1"></i>发送
+                            </button>
                         </div>
                         <input type="file" id="imageInput" accept="image/*" style="display: none;" multiple>
                         <div class="mt-2">
@@ -102,7 +130,9 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="loginModalLabel">商家登录</h5>
+                    <h5 class="modal-title" id="loginModalLabel">
+                        <i class="fas fa-store me-2"></i>商家登录
+                    </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -118,15 +148,71 @@
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary" id="loginSubmitBtn">登录</button>
+                    <div class="me-auto">
+                        <small>还没有账号？ <a href="/register.html" class="text-decoration-none">
+                                <i class="fas fa-user-plus me-1"></i>立即注册
+                            </a></small>
+                    </div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>取消
+                    </button>
+                    <button type="button" class="btn btn-primary" id="loginSubmitBtn">
+                        <i class="fas fa-sign-in-alt me-1"></i>登录
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 系统反馈模态框 -->
+    <div class="modal fade" id="systemFeedbackModal" tabindex="-1" aria-labelledby="systemFeedbackModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="systemFeedbackModalLabel">
+                        <i class="fas fa-bug me-2"></i>向管理员反馈系统问题
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="systemFeedbackForm">
+                        <div class="mb-3">
+                            <label for="systemFeedbackTitle" class="form-label">问题标题 <span
+                                    class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="systemFeedbackTitle" placeholder="请简要描述遇到的系统问题"
+                                maxlength="255" required>
+                            <div class="form-text">最多255个字符</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="systemFeedbackContent" class="form-label">问题详情 <span
+                                    class="text-danger">*</span></label>
+                            <textarea class="form-control" id="systemFeedbackContent" rows="4"
+                                placeholder="请详细描述遇到的问题，包括操作步骤、错误信息等" maxlength="1000" required></textarea>
+                            <div class="form-text">最多1000个字符</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="systemFeedbackContact" class="form-label">联系方式</label>
+                            <input type="text" class="form-control" id="systemFeedbackContact" readonly
+                                placeholder="将使用您注册时的联系方式">
+                            <div class="form-text">使用注册时填写的联系方式，如需修改请联系管理员</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>取消
+                    </button>
+                    <button type="button" class="btn btn-primary" id="submitSystemFeedbackBtn">
+                        <i class="fas fa-paper-plane me-1"></i>提交反馈
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/js/config.js"></script>
+    <script src="/static/js/config.js?v=1.2.0"></script>
     <script src="/static/js/utils.js"></script>
     <script src="/static/js/merchant.js"></script>
 </body>

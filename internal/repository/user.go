@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"feedback-system/internal/models"
 
@@ -15,6 +17,8 @@ type UserRepository interface {
 	Update(user *models.User) error
 	Delete(id uint64) error
 	List() ([]*models.User, error)
+	GetAdmins() ([]*models.User, error)
+	GetMerchants() ([]*models.User, error)
 }
 
 // userRepository 用户仓库实现
@@ -26,55 +30,40 @@ type userRepository struct {
 func NewUserRepository(db *gorm.DB) UserRepository {
 	repo := &userRepository{db: db}
 
-	// 初始化默认用户
-	repo.initDefaultUsers()
+	// 初始化默认管理员用户（如果不存在）
+	repo.initDefaultAdmin()
 
 	return repo
 }
 
-// initDefaultUsers 初始化默认用户
-func (r *userRepository) initDefaultUsers() {
-	// 检查是否已有用户，如果没有则创建默认用户
+// initDefaultAdmin 初始化默认管理员用户
+func (r *userRepository) initDefaultAdmin() {
+	// 检查是否已有管理员用户
 	var count int64
-	r.db.Model(&models.User{}).Count(&count)
+	r.db.Model(&models.User{}).Where("user_type = ?", 3).Count(&count)
 
 	if count == 0 {
 		// 添加默认管理员用户
 		adminUser := &models.User{
-			ID:       1,
 			Username: "admin",
-			Password: "admin123", // 实际项目中应该使用加密密码
-			UserType: 3,          // 管理员
+			Password: hashPassword("admin123"), // 使用加密密码
+			UserType: 3,                        // 管理员
 		}
 		r.db.Create(adminUser)
-
-		// 添加默认商家用户
-		merchantUser := &models.User{
-			ID:       2,
-			Username: "merchant",
-			Password: "merchant123", // 实际项目中应该使用加密密码
-			UserType: 2,             // 商家
-		}
-		r.db.Create(merchantUser)
-
-		// 添加默认普通用户
-		regularUser := &models.User{
-			ID:       3,
-			Username: "user",
-			Password: "user123", // 实际项目中应该使用加密密码
-			UserType: 1,         // 普通用户
-		}
-		r.db.Create(regularUser)
 	}
 }
 
 // Create 创建用户
 func (r *userRepository) Create(user *models.User) error {
-	// 检查用户名是否已存在
+	// 检查用户名在同一用户类型下是否已存在
 	var existingUser models.User
 	result := r.db.Where("username = ? AND user_type = ?", user.Username, user.UserType).First(&existingUser)
 	if result.Error == nil {
 		return errors.New("username already exists for this user type")
+	}
+	// 如果是"record not found"错误，说明用户名不存在，可以创建
+	if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return result.Error
 	}
 
 	// 创建用户
@@ -122,4 +111,24 @@ func (r *userRepository) List() ([]*models.User, error) {
 	var users []*models.User
 	result := r.db.Find(&users)
 	return users, result.Error
+}
+
+// GetAdmins 获取所有管理员用户
+func (r *userRepository) GetAdmins() ([]*models.User, error) {
+	var admins []*models.User
+	result := r.db.Where("user_type = ?", 3).Find(&admins)
+	return admins, result.Error
+}
+
+// GetMerchants 获取所有商家用户
+func (r *userRepository) GetMerchants() ([]*models.User, error) {
+	var merchants []*models.User
+	result := r.db.Where("user_type = ?", 2).Find(&merchants)
+	return merchants, result.Error
+}
+
+// hashPassword 对密码进行MD5加密
+func hashPassword(password string) string {
+	hash := md5.Sum([]byte(password))
+	return hex.EncodeToString(hash[:])
 }

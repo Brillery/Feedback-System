@@ -27,16 +27,8 @@ class HttpUtils {
     static async request(url, options = {}) {
         const fullUrl = url.startsWith('http') ? url : `${CONFIG.API_BASE_URL}${url}`;
 
-        // 根据当前页面自动选择正确的token
-        let token = null;
-        const currentPath = window.location.pathname;
-        if (currentPath.includes('/merchant')) {
-            token = localStorage.getItem(CONFIG.STORAGE_KEYS.MERCHANT_TOKEN);
-        } else if (currentPath.includes('/admin')) {
-            token = localStorage.getItem(CONFIG.STORAGE_KEYS.ADMIN_TOKEN);
-        } else {
-            token = localStorage.getItem(CONFIG.STORAGE_KEYS.USER_TOKEN);
-        }
+        // 使用统一的token获取方法
+        const token = StorageUtils.getToken();
 
         const requestHeaders = {
             ...options.headers
@@ -100,38 +92,73 @@ class HttpUtils {
  */
 class StorageUtils {
     static setToken(token) {
-        localStorage.setItem(CONFIG.STORAGE_KEYS.USER_TOKEN, token);
+        // 简化：直接使用固定的token键，每个标签页独立
+        sessionStorage.setItem('auth_token', token);
     }
 
     static getToken() {
-        return localStorage.getItem(CONFIG.STORAGE_KEYS.USER_TOKEN);
+        // 简化：直接获取token
+        return sessionStorage.getItem('auth_token');
     }
 
     static setUserData(userData) {
-        localStorage.setItem(CONFIG.STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
+        // 简化：直接使用固定的用户数据键
+        sessionStorage.setItem('user_data', JSON.stringify(userData));
     }
 
     static getUserData() {
-        const data = localStorage.getItem(CONFIG.STORAGE_KEYS.USER_DATA);
+        // 简化：直接获取用户数据
+        const data = sessionStorage.getItem('user_data');
         return data ? JSON.parse(data) : null;
     }
 
     static setUserType(userType) {
-        localStorage.setItem(CONFIG.STORAGE_KEYS.USER_TYPE, userType);
+        sessionStorage.setItem('user_type', userType);
     }
 
     static getUserType() {
-        return localStorage.getItem(CONFIG.STORAGE_KEYS.USER_TYPE);
+        return sessionStorage.getItem('user_type');
     }
 
     static clearUserData() {
-        localStorage.removeItem(CONFIG.STORAGE_KEYS.USER_TOKEN);
-        localStorage.removeItem(CONFIG.STORAGE_KEYS.USER_DATA);
-        localStorage.removeItem(CONFIG.STORAGE_KEYS.USER_TYPE);
+        // 简化：只清除当前标签页的sessionStorage数据
+        sessionStorage.removeItem('auth_token');
+        sessionStorage.removeItem('user_data');
+        sessionStorage.removeItem('user_type');
     }
 
     static isLoggedIn() {
         return !!this.getToken();
+    }
+
+    /**
+     * 清理所有localStorage中的旧数据（用于系统升级后的清理）
+     */
+    static clearAllLocalStorageData() {
+        // 清理所有可能的旧数据
+        const keysToRemove = [
+            CONFIG.STORAGE_KEYS.USER_TOKEN,
+            CONFIG.STORAGE_KEYS.MERCHANT_TOKEN,
+            CONFIG.STORAGE_KEYS.ADMIN_TOKEN,
+            CONFIG.STORAGE_KEYS.USER_DATA,
+            CONFIG.STORAGE_KEYS.MERCHANT_DATA,
+            CONFIG.STORAGE_KEYS.ADMIN_DATA,
+            CONFIG.STORAGE_KEYS.USER_TYPE,
+            // 备份键
+            CONFIG.STORAGE_KEYS.USER_TOKEN + '_backup',
+            CONFIG.STORAGE_KEYS.MERCHANT_TOKEN + '_backup',
+            CONFIG.STORAGE_KEYS.ADMIN_TOKEN + '_backup',
+            CONFIG.STORAGE_KEYS.USER_DATA + '_backup',
+            CONFIG.STORAGE_KEYS.MERCHANT_DATA + '_backup',
+            CONFIG.STORAGE_KEYS.ADMIN_DATA + '_backup',
+            CONFIG.STORAGE_KEYS.USER_TYPE + '_backup'
+        ];
+
+        keysToRemove.forEach(key => {
+            localStorage.removeItem(key);
+        });
+
+        console.log('已清理所有localStorage数据');
     }
 }
 

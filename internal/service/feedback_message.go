@@ -2,10 +2,12 @@ package service
 
 import (
 	"encoding/json"
+	"errors"
 	"feedback-system/internal/consts"
 	"feedback-system/internal/models"
 	"feedback-system/internal/repository"
 	"feedback-system/pkg/ws"
+	"log"
 	"time"
 )
 
@@ -44,8 +46,19 @@ func NewFeedbackMessageService(repo repository.FeedbackMessageRepository, feedba
 
 // Create 创建反馈消息
 func (s *feedbackMessageService) Create(message *models.FeedbackMessage) error {
+	// 检查反馈状态，如果已解决则不允许发送消息
+	feedback, err := s.feedbackRepo.FindByID(message.FeedbackID)
+	if err != nil {
+		return err
+	}
+
+	// 状态为3表示已解决
+	if feedback.Status == 3 {
+		return errors.New("反馈已解决，无法发送新消息")
+	}
+
 	// 创建消息
-	err := s.messageRepo.Create(message)
+	err = s.messageRepo.Create(message)
 	if err != nil {
 		return err
 	}
@@ -58,9 +71,11 @@ func (s *feedbackMessageService) Create(message *models.FeedbackMessage) error {
 
 	// 如果有WebSocket处理程序，发送通知
 	if s.wsHandler != nil {
-		// 获取接收者信息（这里需要根据实际情况确定接收者）
-		// 在实际应用中，可能需要查询数据库获取反馈的创建者和目标信息
-		// 这里简化处理，假设接收者是所有相关用户
+		// 获取反馈信息以确定参与者
+		feedback, err := s.feedbackRepo.FindByID(message.FeedbackID)
+		if err != nil {
+			return err
+		}
 
 		// 获取发送者用户名
 		var senderName string
@@ -95,9 +110,44 @@ func (s *feedbackMessageService) Create(message *models.FeedbackMessage) error {
 			return err
 		}
 
-		// 广播消息
-		// 在实际应用中，应该只发送给相关用户，而不是广播
-		s.wsHandler.BroadcastMessage(jsonMessage)
+		// 发送给反馈的创建者（如果不是发送者本人）
+		if feedback.CreatorID != message.SenderID {
+			log.Printf("发送消息给创建者: UserID=%d, UserType=%d", feedback.CreatorID, feedback.CreatorType)
+			s.wsHandler.SendMessageToUser(feedback.CreatorID, feedback.CreatorType, jsonMessage)
+		}
+
+		// 发送给反馈的目标用户（如果不是发送者本人）
+		if feedback.TargetID != message.SenderID {
+			// 将目标类型转换为用户类型
+			var targetUserType uint8
+			switch feedback.TargetType {
+			case 1: // TARGET_TYPE.MERCHANT = 1
+				targetUserType = consts.Merchant // USER_TYPE.MERCHANT = 2
+			case 2: // TARGET_TYPE.ADMIN = 2
+				targetUserType = consts.Admin // USER_TYPE.ADMIN = 3
+			default:
+				targetUserType = feedback.TargetType
+			}
+			log.Printf("发送消息给目标用户: UserID=%d, TargetType=%d, UserType=%d", feedback.TargetID, feedback.TargetType, targetUserType)
+			s.wsHandler.SendMessageToUser(feedback.TargetID, targetUserType, jsonMessage)
+		}
+
+		// 发送给所有管理员（如果发送者不是管理员且目标不是管理员）
+		// 修复重复消息问题：只有当反馈目标不是管理员时，才广播给所有管理员
+		if message.SenderType != consts.Admin && feedback.TargetType != 2 {
+			admins, err := s.userRepo.GetAdmins()
+			if err == nil {
+				for _, admin := range admins {
+					// 避免重复发送给已经作为目标用户接收消息的管理员
+					if admin.ID != feedback.TargetID {
+						s.wsHandler.SendMessageToUser(admin.ID, consts.Admin, jsonMessage)
+					}
+				}
+			}
+		}
+
+		// 同时发送给发送者本人，这样发送者也能看到自己的消息
+		s.wsHandler.SendMessageToUser(message.SenderID, message.SenderType, jsonMessage)
 	}
 
 	return nil

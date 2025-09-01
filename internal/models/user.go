@@ -9,6 +9,7 @@ type User struct {
 	ID        uint64    `gorm:"primaryKey;autoIncrement;not null" json:"id"`
 	Username  string    `gorm:"type:varchar(100);not null;uniqueIndex:idx_username_type" json:"username"`
 	Password  string    `gorm:"type:varchar(255);not null" json:"password,omitempty"` // 在JSON序列化时省略密码字段
+	Contact   string    `gorm:"type:varchar(100);comment:联系方式" json:"contact"`
 	UserType  uint8     `gorm:"not null;comment:用户类型：1-用户 2-商家 3-管理员;uniqueIndex:idx_username_type" json:"user_type"`
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
@@ -31,5 +32,6 @@ type UserLoginResponse struct {
 type UserRegisterRequest struct {
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
+	Contact  string `json:"contact"`
 	UserType uint8  `json:"user_type" binding:"required"`
 }

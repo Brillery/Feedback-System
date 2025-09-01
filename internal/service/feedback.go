@@ -93,7 +93,7 @@ func (s *feedbackService) Create(feedback *models.Feedback) error {
 
 		// 创建新反馈通知消息
 		newFeedbackMessage := models.WSMessage{
-			Event:     "new_feedback", // 新的事件类型
+			Event:     consts.EventNewFeedback, // 使用常量
 			Timestamp: time.Now(),
 			Sender: &models.Sender{
 				ID:   feedback.CreatorID,
@@ -140,10 +140,14 @@ func (s *feedbackService) Create(feedback *models.Feedback) error {
 		// 发送消息给目标用户
 		s.wsHandler.SendMessageToUser(feedback.TargetID, targetUserType, jsonMessage)
 
-		// 同时发送给管理员（如果目标不是管理员）
+		// 同时发送给所有管理员（如果目标不是管理员）
 		if feedback.TargetType != 2 { // TARGET_TYPE.ADMIN = 2
-			// 发送给所有管理员（这里简化为发送给ID=1的管理员）
-			s.wsHandler.SendMessageToUser(1, consts.Admin, jsonMessage)
+			admins, err := s.userRepo.GetAdmins()
+			if err == nil {
+				for _, admin := range admins {
+					s.wsHandler.SendMessageToUser(admin.ID, consts.Admin, jsonMessage)
+				}
+			}
 		}
 	}
 

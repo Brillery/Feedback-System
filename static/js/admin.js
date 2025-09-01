@@ -74,6 +74,10 @@ class AdminApp {
             statusDropdown: document.getElementById('actionButtons'),
             statusItems: document.querySelectorAll('.status-item'),
 
+            // 联系方式悬浮提示相关
+            contactTooltip: document.getElementById('contactTooltip'),
+            tooltipContactInfo: document.getElementById('tooltipContactInfo'),
+
             // 聊天相关
             chatContainer: document.getElementById('chatContainer'),
             noChatSelected: document.getElementById('noChatSelected'),
@@ -109,6 +113,12 @@ class AdminApp {
      * 初始化应用
      */
     init() {
+        // 清理localStorage中的旧数据（只在第一次加载时执行）
+        if (!sessionStorage.getItem('localStorage_cleaned')) {
+            StorageUtils.clearAllLocalStorageData();
+            sessionStorage.setItem('localStorage_cleaned', 'true');
+        }
+
         this.bindEvents();
         this.checkLoginStatus();
 
@@ -197,14 +207,17 @@ class AdminApp {
      * 检查登录状态
      */
     async checkLoginStatus() {
-        const savedUser = localStorage.getItem(CONFIG.STORAGE_KEYS.ADMIN_DATA);
-        const token = localStorage.getItem(CONFIG.STORAGE_KEYS.ADMIN_TOKEN);
+        const savedUser = StorageUtils.getUserData();
+        const token = StorageUtils.getToken();
 
         if (savedUser && token) {
             try {
                 this.state.currentUser = JSON.parse(savedUser);
 
                 // 验证令牌有效性
+                // 前后端对接：GET /api/user/me → internal/handler/user.go GetCurrentUser()方法
+                // 需要Authorization头：Bearer {token}
+                // 响应数据：{code, message, data: user对象}
                 const response = await HttpUtils.get(CONFIG.ENDPOINTS.USER.CURRENT);
 
                 if (response.code === CONFIG.ERROR_CODES.SUCCESS) {
@@ -254,14 +267,18 @@ class AdminApp {
             };
 
             // 发送登录请求
+            // 前后端对接：POST /api/user/login → internal/handler/user.go Login()方法
+            // 请求数据：{username, password, user_type: 3} (3=管理员)
+            // 响应数据：{code, message, data: {user, token}}
             const response = await HttpUtils.post(CONFIG.ENDPOINTS.USER.LOGIN, loginData);
 
             // 保存用户信息和令牌（使用管理员专用存储键）
             this.state.currentUser = {
                 ...response.data.user
             };
-            localStorage.setItem(CONFIG.STORAGE_KEYS.ADMIN_TOKEN, response.data.token);
-            localStorage.setItem(CONFIG.STORAGE_KEYS.ADMIN_DATA, JSON.stringify(response.data.user));
+            StorageUtils.setToken(response.data.token);
+            StorageUtils.setUserData(response.data.user);
+            StorageUtils.setUserType(CONFIG.USER_TYPE.ADMIN);
 
             // 更新UI
             this.updateUIAfterLogin();
@@ -301,9 +318,8 @@ class AdminApp {
         this.state.currentFeedbackId = null;
         this.state.feedbacks = [];
 
-        // 清除本地存储（管理员专用）
-        localStorage.removeItem(CONFIG.STORAGE_KEYS.ADMIN_TOKEN);
-        localStorage.removeItem(CONFIG.STORAGE_KEYS.ADMIN_DATA);
+        // 清除本地存储
+        StorageUtils.clearUserData();
 
         // 更新UI
         this.updateUIAfterLogout();
@@ -318,6 +334,9 @@ class AdminApp {
         this.elements.username.textContent = this.state.currentUser.username;
         this.elements.loginBtn.style.display = 'none';
         this.elements.logoutBtn.style.display = 'block';
+
+        // 更新页面标题，显示当前登录用户（支持多标签页识别）
+        document.title = `反馈系统 - 管理员端 (${this.state.currentUser.username})`;
     }
 
     /**
@@ -327,6 +346,9 @@ class AdminApp {
         this.elements.username.textContent = '未登录';
         this.elements.loginBtn.style.display = 'block';
         this.elements.logoutBtn.style.display = 'none';
+
+        // 恢复页面标题
+        document.title = '反馈系统 - 管理员端';
 
         // 清空反馈列表
         this.elements.feedbackList.innerHTML = '';
@@ -396,7 +418,7 @@ class AdminApp {
     connectWebSocket() {
         if (!this.state.currentUser) return;
 
-        const token = localStorage.getItem(CONFIG.STORAGE_KEYS.ADMIN_TOKEN);
+        const token = StorageUtils.getToken();
         if (!token) {
             this.showAlert('登录已过期，请重新登录', 'warning');
             this.handleLogout();
@@ -569,7 +591,7 @@ class AdminApp {
         this.updateFeedbackStatus(feedbackId, newStatus);
 
         if (Number(feedbackId) === Number(this.state.currentFeedbackId)) {
-            this.elements.currentFeedbackStatus.textContent = this.getStatusText(newStatus);
+            this.elements.currentFeedbackStatus.innerHTML = this.getStatusText(newStatus);
 
             const systemMessage = {
                 event: CONFIG.WS_EVENT_TYPE.MESSAGE,
@@ -666,6 +688,10 @@ class AdminApp {
         if (!this.state.currentFeedbackId) return;
 
         const newStatus = target.dataset.status;
+        // 前后端对接：PUT /api/feedback/{id}/status → internal/handler/feedback.go UpdateStatus()方法
+        // 路径参数：id(反馈ID)
+        // 请求数据：{status: 新状态值}
+        // 响应数据：{code, message, data: {id, status}}
         await this.updateFeedbackStatusOnServer(Number(this.state.currentFeedbackId), newStatus);
     }
 
@@ -686,6 +712,10 @@ class AdminApp {
         }
 
         try {
+            // 前后端对接：DELETE /api/feedback/{id} → internal/handler/feedback.go Delete()方法
+            // 路径参数：id(反馈ID)
+            // 响应数据：{code, message, data: {id}}
+            // 注意：删除后会通过WebSocket通知所有相关用户
             await this.deleteFeedbackOnServer(feedbackId);
 
             // 删除成功后的处理
@@ -730,6 +760,9 @@ class AdminApp {
         if (!this.state.currentUser) return;
 
         try {
+            // 前后端对接：GET /api/feedback → internal/handler/feedback.go GetAll()方法
+            // 管理员可以查看所有反馈（无需查询参数）
+            // 响应数据：{code, message, data: [所有反馈列表]}
             const response = await HttpUtils.get(CONFIG.ENDPOINTS.FEEDBACK.GET_ALL);
             this.state.feedbacks = response.data || [];
             this.renderFeedbackList();
@@ -776,18 +809,20 @@ class AdminApp {
 
             item.innerHTML = `
                 <div class="d-flex justify-content-between align-items-center">
-                    <h6 class="mb-1">${feedback.title}</h6>
+                    <h6 class="mb-1 fw-bold text-dark">${feedback.title}</h6>
                     <span class="badge ${statusClass}">${this.getStatusText(feedback.status)}</span>
                 </div>
-                <p class="mb-1 text-truncate">${feedback.content}</p>
+                <p class="mb-2 text-truncate text-muted">${feedback.content}</p>
                 <div class="d-flex justify-content-between align-items-center">
-                    <small class="text-muted">
-                        <span class="badge bg-info me-1">${creatorType}</span>
-                        <span class="badge bg-secondary">${targetType}</span>
-                    </small>
-                    <small class="text-muted">${DateTimeUtils.formatDate(feedback.created_at)}</small>
+                    <div>
+                        <span class="badge bg-info me-1"><i class="fas fa-user me-1"></i>${creatorType}</span>
+                        <span class="badge bg-secondary"><i class="fas fa-arrow-right me-1"></i>${targetType}</span>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <small class="text-muted me-2"><i class="fas fa-calendar-alt me-1"></i>${DateTimeUtils.formatDate(feedback.created_at)}</small>
+                        ${feedback.unreadCount ? `<span class="badge bg-danger rounded-pill">${feedback.unreadCount}</span>` : ''}
+                    </div>
                 </div>
-                ${feedback.unreadCount ? `<span class="unread-indicator" title="${feedback.unreadCount}条未读消息"></span>` : ''}
             `;
 
             // 使用bind确保this上下文正确
@@ -826,9 +861,8 @@ class AdminApp {
                 this.elements.currentFeedbackTitle.textContent = feedback.title;
             }
             if (this.elements.currentFeedbackStatus) {
-                this.elements.currentFeedbackStatus.textContent = this.getStatusText(feedback.status);
+                this.elements.currentFeedbackStatus.innerHTML = this.getStatusText(feedback.status);
             }
-            // 注意：currentFeedbackCreator 和 currentFeedbackTarget 在HTML中不存在，跳过
         }
 
         // 显示消息输入区域和状态下拉菜单
@@ -867,6 +901,9 @@ class AdminApp {
      */
     async loadFeedbackMessages(feedbackId) {
         try {
+            // 前后端对接：GET /api/message/feedback/{feedbackId} → internal/handler/feedback_message.go GetByFeedbackID()方法
+            // 路径参数：feedback_id(反馈ID)
+            // 响应数据：{code, message, data: [消息列表]}
             const response = await HttpUtils.get(`${CONFIG.ENDPOINTS.FEEDBACK_MESSAGE.GET_BY_FEEDBACK_ID}${feedbackId}`);
             const messages = response.data || [];
 
@@ -956,7 +993,11 @@ class AdminApp {
         // 清空输入框
         this.elements.messageInput.value = '';
 
-        // 只通过API发送消息（后端会自动广播WebSocket消息）
+        // 立即显示自己发送的消息
+        this.appendMessage(message);
+        this.scrollChatToBottom();
+
+        // 保存消息到数据库（后端会自动广播WebSocket消息给其他用户）
         await this.saveMessageToDatabase(message);
     }
 
@@ -1200,7 +1241,7 @@ class AdminApp {
 
             // 更新当前反馈状态显示
             if (Number(feedbackId) === Number(this.state.currentFeedbackId)) {
-                this.elements.currentFeedbackStatus.textContent = this.getStatusText(statusValue);
+                this.elements.currentFeedbackStatus.innerHTML = this.getStatusText(statusValue);
             }
 
             // 重新渲染反馈列表以更新状态标签
@@ -1369,15 +1410,19 @@ class AdminApp {
             messageDiv.innerHTML = `
                 ${contentHtml}
                 <div class="message-info">
-                    <span>${message.sender.name}</span> ·
+                    <span class="user-name-hover" data-user-id="${message.sender.id}" data-user-type="${message.sender.type}" style="cursor: pointer; text-decoration: underline dotted;">${message.sender.name}</span> ·
                     <span>${DateTimeUtils.formatDateTime(message.data.createdAt)}</span>
                 </div>
             `;
         }
 
-        // if (this.elements.chatContainer) {
         this.elements.chatContainer.appendChild(messageDiv);
-        // }
+
+        // 为用户名添加悬浮提示事件
+        const userNameElement = messageDiv.querySelector('.user-name-hover');
+        if (userNameElement) {
+            this.bindContactTooltip(userNameElement);
+        }
     }
 
     /**
@@ -1437,13 +1482,13 @@ class AdminApp {
     getStatusText(status) {
         switch (status) {
             case CONFIG.FEEDBACK_STATUS.OPEN:
-                return '待处理';
+                return '<i class="fas fa-clock me-1"></i>待处理';
             case CONFIG.FEEDBACK_STATUS.IN_PROGRESS:
-                return '处理中';
+                return '<i class="fas fa-spinner me-1"></i>处理中';
             case CONFIG.FEEDBACK_STATUS.RESOLVED:
-                return '已解决';
+                return '<i class="fas fa-check-circle me-1"></i>已解决';
             default:
-                return '未知状态';
+                return '<i class="fas fa-question me-1"></i>未知状态';
         }
     }
 
@@ -1557,6 +1602,64 @@ class AdminApp {
             alertDiv.classList.remove('show');
             setTimeout(() => alertDiv.remove(), 150);
         }, CONFIG.UI.ALERT.AUTO_HIDE_DELAY);
+    }
+
+    /**
+     * 为用户名元素绑定联系方式悬浮提示
+     * @param {HTMLElement} element - 用户名元素
+     */
+    bindContactTooltip(element) {
+        const userId = element.dataset.userId;
+        const userType = element.dataset.userType;
+
+        element.addEventListener('mouseenter', async (e) => {
+            try {
+                // 获取用户信息（包括联系方式）
+                const response = await HttpUtils.get(`${CONFIG.ENDPOINTS.USER.GET_BY_ID}?id=${userId}&type=${userType}`);
+                const user = response.data;
+
+                if (user && user.contact && user.contact.trim()) {
+                    this.showContactTooltip(e.target, user.contact);
+                } else {
+                    this.showContactTooltip(e.target, '未提供联系方式');
+                }
+            } catch (error) {
+                console.error('获取用户联系方式失败:', error);
+                this.showContactTooltip(e.target, '获取联系方式失败');
+            }
+        });
+
+        element.addEventListener('mouseleave', () => {
+            this.hideContactTooltip();
+        });
+    }
+
+    /**
+     * 显示联系方式悬浮提示
+     * @param {HTMLElement} targetElement - 目标元素
+     * @param {string} contact - 联系方式
+     */
+    showContactTooltip(targetElement, contact) {
+        if (!this.elements.contactTooltip || !this.elements.tooltipContactInfo) return;
+
+        this.elements.tooltipContactInfo.textContent = contact;
+
+        // 计算位置
+        const rect = targetElement.getBoundingClientRect();
+        const tooltip = this.elements.contactTooltip;
+
+        tooltip.style.left = `${rect.left + window.scrollX}px`;
+        tooltip.style.top = `${rect.bottom + window.scrollY + 5}px`;
+        tooltip.style.display = 'block';
+    }
+
+    /**
+     * 隐藏联系方式悬浮提示
+     */
+    hideContactTooltip() {
+        if (this.elements.contactTooltip) {
+            this.elements.contactTooltip.style.display = 'none';
+        }
     }
 }
 
