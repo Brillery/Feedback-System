@@ -13,6 +13,7 @@ import (
 // Hub WebSocket连接管理中心
 type Hub struct {
 	// 所有活跃的客户端连接
+	// 快速检查某个连接是否仍然活跃，广播消息给所有客户端
 	clients map[*WSClient]bool
 
 	// 按用户ID和类型索引的客户端连接
@@ -95,6 +96,28 @@ func (h *Hub) unregisterClient(client *WSClient) {
 
 		// 从用户索引中移除
 		userKey := getUserKeyByID(client.UserID, client.UserType)
+		// 这里为什么要双重检查？ 前面不是已经有了写锁吗，为啥还要多判断c == client
+		// exists 检查：确认在 userClients 映射中是否存在对应 userKey 的条目
+		// c == client 检查：确认映射中存储的客户端正是我们要注销的客户端
+		//
+		// 问题的核心在于两个不同通道的并发操作
+		// 我注销有一个通道，注册有一个通道，虽然能保证同时只有一个协程在注销某个客户端，
+		// 但是不能保证处在注册通道的某个客户端先一步执行，修改了即将要被注销的客户端，
+		// 正因为这个时间差，所以应该多判断一步，也就是：即将要删的客户端，是否已经变更
+
+		/*
+			T1: unregister通道收到旧客户端A的注销请求
+			T2: register通道收到同一用户的新连接请求，创建客户端B
+			T3: registerClient执行：
+			    - 发现userClients[userKey]中是旧客户端A
+			    - 关闭A，从clients和userClients中删除A
+			    - 将userClients[userKey]更新为新客户端B
+			T4: unregisterClient开始执行（处理旧客户端A）：
+			    - A已经从clients中删除了（T3时）
+			    - 但在userClients[userKey]中现在是客户端B！
+			    - 如果不检查 c == client，就会误删客户端B的映射！
+		*/
+
 		if c, exists := h.userClients[userKey]; exists && c == client {
 			delete(h.userClients, userKey)
 		}

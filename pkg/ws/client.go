@@ -30,7 +30,11 @@ var (
 	space   = []byte(" ")
 )
 
-// 处理WebSocket连接的读操作
+// ReadPump 是 WebSocket 客户端的消息读取循环函数，负责持续从连接中读取消息并根据消息类型进行处理。
+// 当连接断开或发生错误时，会将当前客户端从 Hub 中注销。
+//
+// 参数:
+//   - hub: WebSocket 消息中枢，用于管理所有客户端连接和消息广播
 func (c *WSClient) ReadPump(hub *Hub) {
 	defer func() {
 		hub.unregister <- c
@@ -55,6 +59,7 @@ func (c *WSClient) ReadPump(hub *Hub) {
 		}
 
 		// 处理消息
+		// 外层TrimSpace切除空格，内层bytes.Replace将换行符替换为空格
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
 
 		// 解析消息

@@ -34,8 +34,12 @@ func NewWSHandler() *WSHandler {
 }
 
 // HandleConnection 处理WebSocket连接请求
+// 该函数负责验证用户身份信息，升级HTTP连接为WebSocket连接，
+// 并启动客户端的读写协程
+// 参数:
+//   - c: gin框架的上下文对象，包含HTTP请求和响应信息
 func (h *WSHandler) HandleConnection(c *gin.Context) {
-	// 获取用户信息
+	// 获取并验证用户基本信息
 	userIDStr := c.Query("user_id")
 	if userIDStr == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing user ID"})
@@ -71,7 +75,7 @@ func (h *WSHandler) HandleConnection(c *gin.Context) {
 	// 创建客户端
 	client := NewWSClient(conn, userID, uint8(userType), userName)
 
-	// 注册客户端
+	// 注册客户端到Hub中进行统一管理
 	h.hub.register <- client
 
 	// 启动读写协程
