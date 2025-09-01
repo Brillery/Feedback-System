@@ -938,15 +938,24 @@ class UserApp {
         }
 
         try {
-            // 上传图片并获取URL
-            const imageUrls = [];
-            for (const file of files) {
-                const formData = new FormData();
-                formData.append('image', file);
-
-                const response = await HttpUtils.post('/upload/image', formData);
-                imageUrls.push(response.data.url);
-            }
+            // 上传图片并获取URL - 使用Promise.all并行上传，提高效率
+            const uploadPromises = files.map(async (file, index) => {
+                try {
+                    const formData = new FormData();
+                    formData.append('image', file);
+                    
+                    console.log(`开始上传第${index + 1}张图片:`, file.name);
+                    const response = await HttpUtils.post('/upload/image', formData);
+                    console.log(`第${index + 1}张图片上传成功:`, response.data.url);
+                    return response.data.url;
+                } catch (error) {
+                    console.error(`第${index + 1}张图片上传失败:`, file.name, error);
+                    throw new Error(`图片 "${file.name}" 上传失败: ${error.message}`);
+                }
+            });
+            
+            const imageUrls = await Promise.all(uploadPromises);
+            console.log('所有图片上传完成:', imageUrls);
 
             // 获取当前反馈信息以确定接收者
             const currentFeedback = this.state.feedbacks.find(f => Number(f.id) === Number(this.state.currentFeedbackId));
@@ -990,7 +999,12 @@ class UserApp {
 
         } catch (error) {
             console.error('发送图片失败:', error);
-            this.showAlert('发送图片失败: ' + error.message, 'danger');
+            // 如果是上传失败，显示具体的错误信息
+            if (error.message.includes('上传失败')) {
+                this.showAlert(error.message, 'danger');
+            } else {
+                this.showAlert('发送图片失败: ' + error.message, 'danger');
+            }
         }
     }
 
@@ -1108,9 +1122,8 @@ class UserApp {
 
                 case CONFIG.MESSAGE_TYPE.IMAGE:
                     contentHtml = `
-                        <div class="message-content">
-                            <img src="${message.data.content}" class="img-fluid rounded" style="max-width: 200px; cursor: pointer;"
-                                 onclick="window.open('${message.data.content}', '_blank')">
+                        <div class="message-content message-image-content">
+                            <img src="${message.data.content}" class="message-image" onclick="window.open('${message.data.content}', '_blank')">
                         </div>
                     `;
                     break;
@@ -1118,10 +1131,9 @@ class UserApp {
                 case CONFIG.MESSAGE_TYPE.IMAGE_ARRAY:
                     const imageUrls = JSON.parse(message.data.content);
                     const imagesHtml = imageUrls.map(url =>
-                        `<img src="${url}" class="img-fluid rounded me-1 mb-1" style="max-width: 150px; cursor: pointer;"
-                              onclick="window.open('${url}', '_blank')">`
+                        `<img src="${url}" class="message-image-multiple" onclick="window.open('${url}', '_blank')">`
                     ).join('');
-                    contentHtml = `<div class="message-content">${imagesHtml}</div>`;
+                    contentHtml = `<div class="message-content message-images-content">${imagesHtml}</div>`;
                     break;
 
                 default:

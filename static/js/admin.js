@@ -1387,22 +1387,23 @@ class AdminApp {
                 case CONFIG.MESSAGE_TYPE.TEXT:
                     contentHtml = `<div class="message-content">${message.data.content}</div>`;
                     break;
+
                 case CONFIG.MESSAGE_TYPE.IMAGE:
                     contentHtml = `
-                        <div class="message-content">
-                            <img src="${message.data.content}" class="img-fluid rounded" style="max-width: 200px; cursor: pointer;"
-                                 onclick="window.open('${message.data.content}', '_blank')">
+                        <div class="message-content message-image-content">
+                            <img src="${message.data.content}" class="message-image" onclick="window.open('${message.data.content}', '_blank')">
                         </div>
                     `;
                     break;
+
                 case CONFIG.MESSAGE_TYPE.IMAGE_ARRAY:
                     const imageUrls = JSON.parse(message.data.content);
                     const imagesHtml = imageUrls.map(url =>
-                        `<img src="${url}" class="img-fluid rounded me-1 mb-1" style="max-width: 150px; cursor: pointer;"
-                              onclick="window.open('${url}', '_blank')">`
+                        `<img src="${url}" class="message-image-multiple" onclick="window.open('${url}', '_blank')">`
                     ).join('');
-                    contentHtml = `<div class="message-content">${imagesHtml}</div>`;
+                    contentHtml = `<div class="message-content message-images-content">${imagesHtml}</div>`;
                     break;
+
                 default:
                     contentHtml = `<div class="message-content">${message.data.content}</div>`;
             }
